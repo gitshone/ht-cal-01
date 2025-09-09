@@ -20,7 +20,7 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "paths": {
-      "@ht-cal-01/shared-types": ["libs/shared-types/src/index.ts"]
+      "@ht-cal-01/shared-types": ["libs/shared-types/dist/index.d.ts"]
     }
   }
 }

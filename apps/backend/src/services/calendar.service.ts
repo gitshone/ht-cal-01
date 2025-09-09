@@ -6,7 +6,7 @@ import {
   GoogleCalendarEventData,
 } from '@ht-cal-01/shared-types';
 import { googleOAuthService } from './googleOAuth.service';
-import { CalendarError } from '../errors/calendar.errors';
+import { GoogleApiError } from '../errors/http.errors';
 
 export class CalendarService {
   async getEvents(
@@ -43,13 +43,6 @@ export class CalendarService {
         nextSyncToken: response.data.nextSyncToken || undefined,
       };
     } catch (error) {
-      console.error('Error fetching calendar events:', error);
-
-      // If it's already a CalendarError, re-throw it
-      if (error instanceof CalendarError) {
-        throw error;
-      }
-
       // Handle Google API specific errors
       if (error instanceof Error) {
         const errorMessage = error.message.toLowerCase();
@@ -61,7 +54,9 @@ export class CalendarService {
           errorMessage.includes('unauthorized') ||
           errorMessage.includes('access_denied')
         ) {
-          throw CalendarError.googleAuthExpired();
+          throw new GoogleApiError(
+            'Google Calendar access expired. Please reconnect your calendar.'
+          );
         }
 
         // Check for quota/rate limit errors
@@ -70,7 +65,9 @@ export class CalendarService {
           errorMessage.includes('rate limit') ||
           errorMessage.includes('too many requests')
         ) {
-          throw CalendarError.googleQuotaExceeded();
+          throw new GoogleApiError(
+            'Google Calendar quota exceeded. Please try again later.'
+          );
         }
 
         // Check for calendar access denied
@@ -78,7 +75,9 @@ export class CalendarService {
           errorMessage.includes('forbidden') ||
           errorMessage.includes('insufficient permission')
         ) {
-          throw CalendarError.calendarAccessDenied();
+          throw new GoogleApiError(
+            'Unable to access Google Calendar. Please check your permissions.'
+          );
         }
 
         // Generic Google API error
@@ -87,13 +86,17 @@ export class CalendarService {
           errorMessage.includes('calendar') ||
           errorMessage.includes('oauth')
         ) {
-          throw CalendarError.googleApiError(error.message);
+          throw new GoogleApiError(
+            `Unable to access Google Calendar: ${error.message}`
+          );
         }
       }
 
       // Unknown error
-      throw CalendarError.unknownError(
-        error instanceof Error ? error.message : 'Unknown error occurred'
+      throw new GoogleApiError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to retrieve calendar events. Please try again.'
       );
     }
   }

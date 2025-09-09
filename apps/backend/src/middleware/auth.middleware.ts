@@ -62,9 +62,6 @@ export const authenticate = (
 
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
-
-    // Provide more specific error messages
     let errorMessage = 'Invalid or expired token';
     if (error instanceof Error) {
       if (error.message.includes('expired')) {
@@ -73,7 +70,6 @@ export const authenticate = (
         errorMessage = 'Invalid token';
       }
     }
-
     const response: ApiResponse = {
       success: false,
       error: errorMessage,

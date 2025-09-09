@@ -3,6 +3,7 @@ import cors from 'cors';
 import { config } from 'dotenv';
 import { prisma } from './lib/prisma';
 import routes from './routes';
+import { errorHandler } from './middleware/errorHandler.middleware';
 
 // Load environment variables
 config();
@@ -29,6 +30,9 @@ app.get('/', (req, res) => {
 
 // Routes
 app.use('/', routes);
+
+// Error handling middleware (must be last)
+app.use(errorHandler);
 
 // Graceful shutdown
 process.on('SIGINT', async () => {

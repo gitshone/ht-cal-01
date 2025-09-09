@@ -4,7 +4,7 @@ import { signInWithPopup, signOut, User as FirebaseUser } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { authService, setTokens, clearTokens } from '../lib/api';
 import { googleOAuthService } from '../lib/googleOAuth';
-import { User } from '@ht-cal-01/shared-types';
+import { AuthErrorCode, User } from '@ht-cal-01/shared-types';
 
 interface AuthState {
   // State
@@ -13,6 +13,7 @@ interface AuthState {
   user: User | null;
   firebaseUser: FirebaseUser | null;
   error: string | null;
+  errorCode: string | null;
 
   // Actions
   loginWithGoogle: () => Promise<void>;
@@ -31,6 +32,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       firebaseUser: null,
       error: null,
+      errorCode: null,
 
       loginWithGoogle: async () => {
         try {
@@ -58,13 +60,25 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
         } catch (error) {
-          console.error('Login failed:', error);
+          // Extract error code and message from API response
+          const errorData = (
+            error as {
+              response?: { data?: { error?: string; errorCode?: string } };
+            }
+          )?.response?.data;
+          const errorMessage =
+            errorData?.error ||
+            (error instanceof Error ? error.message : 'Login failed');
+          const errorCode =
+            errorData?.errorCode || AuthErrorCode.FIREBASE_AUTH_FAILED;
+
           set({
             isAuthenticated: false,
             user: null,
             firebaseUser: null,
             isLoading: false,
-            error: error instanceof Error ? error.message : 'Login failed',
+            error: errorMessage,
+            errorCode: errorCode,
           });
         }
       },
@@ -92,18 +106,31 @@ export const useAuthStore = create<AuthState>()(
             firebaseUser: null,
             isLoading: false,
             error: null,
+            errorCode: null,
           });
         } catch (error) {
-          console.error('Logout failed:', error);
+          // Extract error code and message from API response
+          const errorData = (
+            error as {
+              response?: { data?: { error?: string; errorCode?: string } };
+            }
+          )?.response?.data;
+          const errorMessage =
+            errorData?.error ||
+            (error instanceof Error ? error.message : 'Logout failed');
+          const errorCode =
+            errorData?.errorCode || AuthErrorCode.INTERNAL_SERVER_ERROR;
+
           set({
             isLoading: false,
-            error: error instanceof Error ? error.message : 'Logout failed',
+            error: errorMessage,
+            errorCode: errorCode,
           });
         }
       },
 
       clearError: () => {
-        set({ error: null });
+        set({ error: null, errorCode: null });
       },
 
       setLoading: (loading: boolean) => {
@@ -128,10 +155,23 @@ export const useAuthStore = create<AuthState>()(
                     firebaseUser,
                     isLoading: false,
                     error: null,
+                    errorCode: null,
                   });
                 } catch (error) {
-                  // Backend auth failed, clear everything
-                  console.error('Backend auth check failed:', error);
+                  // Extract error code and message from API response
+                  const errorData = (
+                    error as {
+                      response?: {
+                        data?: { error?: string; errorCode?: string };
+                      };
+                    }
+                  )?.response?.data;
+                  const errorMessage =
+                    errorData?.error || 'Authentication failed';
+                  const errorCode =
+                    errorData?.errorCode ||
+                    AuthErrorCode.AUTHENTICATION_REQUIRED;
+
                   await signOut(auth);
                   clearTokens();
 
@@ -140,7 +180,8 @@ export const useAuthStore = create<AuthState>()(
                     user: null,
                     firebaseUser: null,
                     isLoading: false,
-                    error: null,
+                    error: errorMessage,
+                    errorCode: errorCode,
                   });
                 }
               } else {
@@ -152,6 +193,7 @@ export const useAuthStore = create<AuthState>()(
                   firebaseUser: null,
                   isLoading: false,
                   error: null,
+                  errorCode: null,
                 });
               }
 
@@ -160,7 +202,6 @@ export const useAuthStore = create<AuthState>()(
             });
           });
         } catch (error) {
-          console.error('Auth initialization failed:', error);
           set({
             isAuthenticated: false,
             user: null,
@@ -176,11 +217,9 @@ export const useAuthStore = create<AuthState>()(
 
       getGoogleOAuthCode: async (): Promise<string | null> => {
         try {
-          // Request calendar access from Google
           const code = await googleOAuthService.requestCalendarAccess();
           return code;
         } catch (error) {
-          console.error('Failed to get Google OAuth code:', error);
           return null;
         }
       },

@@ -55,25 +55,29 @@ export class GoogleOAuthService {
     await this.waitForGoogleAPI();
 
     return new Promise((resolve, reject) => {
-      const client = window.google.accounts.oauth2.initCodeClient({
-        client_id: this.clientId,
-        scope: 'https://www.googleapis.com/auth/calendar.readonly',
-        access_type: 'offline',
-        ux_mode: 'popup',
-        callback: async response => {
-          try {
-            if (response.code) {
-              resolve(response.code);
-            } else {
-              reject(new Error('No authorization code received'));
+      try {
+        const client = window.google.accounts.oauth2.initCodeClient({
+          client_id: this.clientId,
+          scope: 'https://www.googleapis.com/auth/calendar.readonly',
+          access_type: 'offline',
+          ux_mode: 'popup',
+          callback: async response => {
+            try {
+              if (response.code) {
+                resolve(response.code);
+              } else {
+                reject(new Error('No authorization code received'));
+              }
+            } catch (error) {
+              reject(error);
             }
-          } catch (error) {
-            reject(error);
-          }
-        },
-      });
+          },
+        });
 
-      client.requestCode();
+        client.requestCode();
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 }

@@ -8,6 +8,14 @@ import {
   AuthResponseDto,
   User,
 } from '@ht-cal-01/shared-types';
+import {
+  AuthenticationRequiredError,
+  MissingRequiredFieldsError,
+  FirebaseAuthFailedError,
+  UserNotFoundError,
+  InvalidTokenError,
+  UnknownError,
+} from '../errors/http.errors';
 
 export class AuthController {
   private authService: AuthService;
@@ -23,12 +31,7 @@ export class AuthController {
       const { firebaseToken }: FirebaseAuthDto = req.body;
 
       if (!firebaseToken) {
-        const response: ApiResponse = {
-          success: false,
-          error: 'Firebase token is required',
-        };
-        res.status(400).json(response);
-        return;
+        throw new MissingRequiredFieldsError('Firebase token is required');
       }
 
       const authResult = await this.authService.authenticateWithFirebase({
@@ -42,15 +45,8 @@ export class AuthController {
       };
 
       res.status(200).json(response);
-    } catch (error) {
-      console.error('Login error:', error);
-
-      const response: ApiResponse = {
-        success: false,
-        error: error instanceof Error ? error.message : 'Authentication failed',
-      };
-
-      res.status(401).json(response);
+    } catch {
+      throw new FirebaseAuthFailedError();
     }
   }
 
@@ -59,12 +55,7 @@ export class AuthController {
       const { refreshToken }: RefreshTokenDto = req.body;
 
       if (!refreshToken) {
-        const response: ApiResponse = {
-          success: false,
-          error: 'Refresh token is required',
-        };
-        res.status(400).json(response);
-        return;
+        throw new MissingRequiredFieldsError('Refresh token is required');
       }
 
       const result = await this.authService.refreshAccessToken(refreshToken);
@@ -76,38 +67,21 @@ export class AuthController {
       };
 
       res.status(200).json(response);
-    } catch (error) {
-      console.error('Token refresh error:', error);
-
-      const response: ApiResponse = {
-        success: false,
-        error: error instanceof Error ? error.message : 'Token refresh failed',
-      };
-
-      res.status(401).json(response);
+    } catch {
+      throw new InvalidTokenError('Token refresh failed. Please log in again.');
     }
   }
 
   async getCurrentUser(req: Request, res: Response): Promise<void> {
     try {
       if (!req.user) {
-        const response: ApiResponse = {
-          success: false,
-          error: 'User not authenticated',
-        };
-        res.status(401).json(response);
-        return;
+        throw new AuthenticationRequiredError();
       }
 
       const user = await this.userService.getUserById(req.user.userId);
 
       if (!user) {
-        const response: ApiResponse = {
-          success: false,
-          error: 'User not found',
-        };
-        res.status(404).json(response);
-        return;
+        throw new UserNotFoundError();
       }
 
       const response: ApiResponse<User> = {
@@ -117,15 +91,10 @@ export class AuthController {
       };
 
       res.status(200).json(response);
-    } catch (error) {
-      console.error('Get current user error:', error);
-
-      const response: ApiResponse = {
-        success: false,
-        error: 'Failed to get user information',
-      };
-
-      res.status(500).json(response);
+    } catch {
+      throw new UnknownError(
+        'Failed to get user information. Please try again.'
+      );
     }
   }
 
@@ -142,15 +111,8 @@ export class AuthController {
       };
 
       res.status(200).json(response);
-    } catch (error) {
-      console.error('Logout error:', error);
-
-      const response: ApiResponse = {
-        success: false,
-        error: 'Logout failed',
-      };
-
-      res.status(500).json(response);
+    } catch {
+      throw new UnknownError('Logout failed. Please try again.');
     }
   }
 }

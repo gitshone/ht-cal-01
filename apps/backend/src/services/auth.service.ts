@@ -82,7 +82,6 @@ export class AuthService {
         refreshToken,
       };
     } catch (error) {
-      console.error('Firebase authentication error:', error);
       throw new Error('Invalid Firebase token');
     }
   }
@@ -112,7 +111,6 @@ export class AuthService {
 
       return { accessToken: newAccessToken };
     } catch (error) {
-      console.error('Token refresh error:', error);
       throw new Error('Invalid refresh token');
     }
   }

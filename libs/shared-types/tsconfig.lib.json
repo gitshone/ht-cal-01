@@ -9,8 +9,10 @@
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "types": ["node"],
-    "noEmitOnError": false
+    "noEmitOnError": false,
+    "module": "esnext",
+    "target": "es2022"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/index.ts"],
   "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"]
 }

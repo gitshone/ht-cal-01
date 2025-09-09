@@ -7,23 +7,39 @@ import {
 import { apiClient, handleApiResponse } from './client';
 
 export class CalendarService {
-  async getEvents(
-    googleCode?: string,
-    params?: CalendarListParams
-  ): Promise<CalendarListResponse> {
-    const headers: Record<string, string> = {};
-
-    if (googleCode) {
-      headers['x-google-oauth-code'] = googleCode;
-    }
-
+  async getEvents(params?: CalendarListParams): Promise<CalendarListResponse> {
     const response: AxiosResponse<ApiResponse<CalendarListResponse>> =
       await apiClient.get('/api/calendar/events', {
         params,
-        headers,
       });
 
     return handleApiResponse(response);
+  }
+
+  async connectCalendar(googleCode: string): Promise<void> {
+    const response: AxiosResponse<ApiResponse> = await apiClient.post(
+      '/api/calendar/connect',
+      {},
+      {
+        headers: {
+          'x-google-oauth-code': googleCode,
+        },
+      }
+    );
+
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Failed to connect calendar');
+    }
+  }
+
+  async disconnectCalendar(): Promise<void> {
+    const response: AxiosResponse<ApiResponse> = await apiClient.delete(
+      '/api/calendar/disconnect'
+    );
+
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Failed to disconnect calendar');
+    }
   }
 }
 

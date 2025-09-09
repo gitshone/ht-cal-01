@@ -1,7 +1,7 @@
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../lib/prisma';
-import { CalendarError } from '../errors/calendar.errors';
+import { NoGoogleTokensError } from '../errors/http.errors';
 
 export class GoogleOAuthService {
   private oauth2Client: OAuth2Client;
@@ -35,7 +35,6 @@ export class GoogleOAuthService {
         },
       });
     } catch (error) {
-      console.error('Error exchanging code for tokens:', error);
       throw new Error('Failed to exchange authorization code for tokens');
     }
   }
@@ -47,7 +46,7 @@ export class GoogleOAuthService {
     });
 
     if (!user?.googleOauthTokens) {
-      throw CalendarError.noGoogleTokens();
+      throw new NoGoogleTokensError();
     }
 
     const tokens = user.googleOauthTokens as {
