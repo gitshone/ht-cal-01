@@ -8,6 +8,13 @@ out-tsc
 # dependencies
 node_modules
 
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
 # IDEs and editors
 /.idea
 .project
@@ -42,3 +49,6 @@ Thumbs.db
 .nx/workspace-data
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
+
+vite.config.*.timestamp*
+vitest.config.*.timestamp*
