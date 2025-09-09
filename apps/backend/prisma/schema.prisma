@@ -16,6 +16,11 @@ model User {
   password  String
   firstName String   @map("first_name")
   lastName  String   @map("last_name")
+
+  // Google OAuth2 tokens for calendar access
+  googleOauthTokens Json? @map("google_oauth_tokens")
+
+  // Timestamps
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
