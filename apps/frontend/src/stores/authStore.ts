@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { signInWithPopup, signOut, User as FirebaseUser } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
-import { authAPI, setTokens, clearTokens } from '../lib/api';
+import { authService, setTokens, clearTokens } from '../lib/api';
+import { googleOAuthService } from '../lib/googleOAuth';
 import { User } from '@ht-cal-01/shared-types';
 
 interface AuthState {
@@ -19,6 +20,7 @@ interface AuthState {
   clearError: () => void;
   setLoading: (loading: boolean) => void;
   initializeAuth: () => Promise<void>;
+  getGoogleOAuthCode: () => Promise<string | null>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -42,7 +44,7 @@ export const useAuthStore = create<AuthState>()(
           const idToken = await firebaseUser.getIdToken();
 
           // Authenticate with backend
-          const authResponse = await authAPI.loginWithFirebase(idToken);
+          const authResponse = await authService.loginWithFirebase(idToken);
 
           // Store tokens
           setTokens(authResponse.accessToken, authResponse.refreshToken);
@@ -76,7 +78,7 @@ export const useAuthStore = create<AuthState>()(
 
           // Logout from backend
           try {
-            await authAPI.logout();
+            await authService.logout();
           } catch (error) {
             console.error('Backend logout failed:', error);
           }
@@ -118,7 +120,7 @@ export const useAuthStore = create<AuthState>()(
               if (firebaseUser) {
                 try {
                   // Get current user from backend
-                  const userData = await authAPI.getCurrentUser();
+                  const userData = await authService.getCurrentUser();
 
                   set({
                     isAuthenticated: true,
@@ -169,6 +171,17 @@ export const useAuthStore = create<AuthState>()(
                 ? error.message
                 : 'Auth initialization failed',
           });
+        }
+      },
+
+      getGoogleOAuthCode: async (): Promise<string | null> => {
+        try {
+          // Request calendar access from Google
+          const code = await googleOAuthService.requestCalendarAccess();
+          return code;
+        } catch (error) {
+          console.error('Failed to get Google OAuth code:', error);
+          return null;
         }
       },
     }),

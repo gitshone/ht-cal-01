@@ -1,22 +1,8 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
-import {
-  AuthResponseDto,
-  FirebaseAuthDto,
-  RefreshTokenDto,
-  ApiResponse,
-} from '@ht-cal-01/shared-types';
+import { ApiResponse } from '@ht-cal-01/shared-types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 10000;
-
-// Create axios instance
-const apiClient: AxiosInstance = axios.create({
-  baseURL: API_URL,
-  timeout: API_TIMEOUT,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
 
 // Token management
 let accessToken: string | null = null;
@@ -45,6 +31,15 @@ export const clearTokens = () => {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
 };
+
+// Create axios instance
+export const apiClient: AxiosInstance = axios.create({
+  baseURL: API_URL,
+  timeout: API_TIMEOUT,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
 // Request interceptor to add auth token
 apiClient.interceptors.request.use(
@@ -101,54 +96,14 @@ apiClient.interceptors.response.use(
   }
 );
 
-// API methods
-export const authAPI = {
-  loginWithFirebase: async (
-    firebaseToken: string
-  ): Promise<AuthResponseDto> => {
-    const response: AxiosResponse<ApiResponse<AuthResponseDto>> =
-      await apiClient.post('/api/auth/login/firebase', {
-        firebaseToken,
-      } as FirebaseAuthDto);
-
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-
-    throw new Error(response.data.error || 'Login failed');
-  },
-
-  refreshToken: async (
-    refreshToken: string
-  ): Promise<{ accessToken: string }> => {
-    const response: AxiosResponse<ApiResponse<{ accessToken: string }>> =
-      await apiClient.post('/api/auth/refresh', {
-        refreshToken,
-      } as RefreshTokenDto);
-
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-
-    throw new Error(response.data.error || 'Token refresh failed');
-  },
-
-  getCurrentUser: async () => {
-    const response: AxiosResponse<ApiResponse> = await apiClient.get(
-      '/api/auth/me'
-    );
-
-    if (response.data.success) {
-      return response.data.data;
-    }
-
-    throw new Error(response.data.error || 'Failed to get current user');
-  },
-
-  logout: async (): Promise<void> => {
-    await apiClient.post('/api/auth/logout');
-    clearTokens();
-  },
+// Generic API response handler
+export const handleApiResponse = <T>(
+  response: AxiosResponse<ApiResponse<T>>
+): T => {
+  if (response.data.success && response.data.data) {
+    return response.data.data;
+  }
+  throw new Error(response.data.error || 'API request failed');
 };
 
 export default apiClient;

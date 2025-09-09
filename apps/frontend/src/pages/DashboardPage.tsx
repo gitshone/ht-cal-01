@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuthStore } from '../stores/authStore';
+import EventsList from '../components/EventsList';
 
 const DashboardPage: React.FC = () => {
   const { user, logout, isLoading } = useAuthStore();
@@ -42,28 +43,9 @@ const DashboardPage: React.FC = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* Welcome Section */}
-          <div className="bg-white rounded-lg shadow px-6 py-8 mb-8">
-            <div className="text-center">
-              <div className="mx-auto h-16 w-16 bg-indigo-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="h-8 w-8 text-indigo-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-              </div>
-              <p className="mt-2 text-gray-600">
-                You have successfully logged in with Firebase authentication.
-              </p>
-            </div>
+          {/* Calendar Events Section */}
+          <div className="bg-white rounded-lg shadow px-6 py-8">
+            <EventsList />
           </div>
         </div>
       </main>

@@ -1,13 +1,11 @@
 {
-  "extends": "./tsconfig.base.json",
-  "compileOnSave": false,
   "files": [],
   "references": [
     {
-      "path": "./apps/frontend"
+      "path": "./apps/backend"
     },
     {
-      "path": "./apps/backend"
+      "path": "./apps/frontend"
     },
     {
       "path": "./libs/shared-types"

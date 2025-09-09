@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import userRoutes from './user.routes';
 import authRoutes from './auth.routes';
+import calendarRoutes from './calendar.routes';
 import { prisma } from '../lib/prisma';
 
 const router = Router();
@@ -27,5 +28,6 @@ router.get('/health', async (req, res) => {
 // API routes
 router.use('/api/auth', authRoutes);
 router.use('/api/users', userRoutes);
+router.use('/api/calendar', calendarRoutes);
 
 export default router;
