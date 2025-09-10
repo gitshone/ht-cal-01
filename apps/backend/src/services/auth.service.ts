@@ -81,7 +81,7 @@ export class AuthService {
         accessToken,
         refreshToken,
       };
-    } catch (error) {
+    } catch {
       throw new Error('Invalid Firebase token');
     }
   }
@@ -110,7 +110,7 @@ export class AuthService {
       } as PrismaUser);
 
       return { accessToken: newAccessToken };
-    } catch (error) {
+    } catch {
       throw new Error('Invalid refresh token');
     }
   }

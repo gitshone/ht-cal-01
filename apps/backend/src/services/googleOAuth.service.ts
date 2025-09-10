@@ -34,7 +34,7 @@ export class GoogleOAuthService {
           },
         },
       });
-    } catch (error) {
+    } catch {
       throw new Error('Failed to exchange authorization code for tokens');
     }
   }

@@ -1,12 +1,14 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { Exception } from '@tsed/exceptions';
+import logger from '../utils/winston-logger';
 
 export const errorHandler = (
   error: Error,
-  req: Request,
-  res: Response
+  _req: Request,
+  res: Response,
+  _next: NextFunction
 ): void => {
-  console.error('Error caught by global handler:', error);
+  logger.error('Error caught by global handler:', error);
 
   // Handle TsED exceptions
   if (error instanceof Exception) {

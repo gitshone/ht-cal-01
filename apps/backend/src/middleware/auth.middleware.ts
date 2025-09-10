@@ -11,20 +11,11 @@ declare module 'express-serve-static-core' {
 
 const authService = new AuthService();
 
-/**
- * Middleware to authenticate requests using JWT tokens
- * Requires a valid Bearer token in the Authorization header
- *
- * @param req
- * @param res
- * @param next
- * @returns
- */
-export const authenticate = (
+export const authenticate = async (
   req: Request,
   res: Response,
   next: NextFunction
-): void => {
+): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -59,20 +50,11 @@ export const authenticate = (
 
     const decoded = authService.verifyAccessToken(token);
     req.user = decoded;
-
     next();
   } catch (error) {
-    let errorMessage = 'Invalid or expired token';
-    if (error instanceof Error) {
-      if (error.message.includes('expired')) {
-        errorMessage = 'Token has expired';
-      } else if (error.message.includes('invalid')) {
-        errorMessage = 'Invalid token';
-      }
-    }
     const response: ApiResponse = {
       success: false,
-      error: errorMessage,
+      error: 'Invalid or expired token',
     };
     res.status(401).json(response);
   }

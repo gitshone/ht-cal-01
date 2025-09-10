@@ -1,11 +1,7 @@
 import { Request, Response } from 'express';
-import { CalendarService } from '../services/calendar.service';
-import { googleOAuthService } from '../services/googleOAuth.service';
-import {
-  ApiResponse,
-  CalendarListParams,
-  CalendarListResponse,
-} from '@ht-cal-01/shared-types';
+import { eventService } from '../services/event.service';
+import { jobQueueService } from '../services/jobQueue.service';
+import { ApiResponse } from '@ht-cal-01/shared-types';
 import {
   AuthenticationRequiredError,
   MissingRequiredFieldsError,
@@ -13,52 +9,9 @@ import {
 } from '../errors/http.errors';
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
+import { EVENT_CONSTANTS } from '../constants/events';
 
 export class CalendarController {
-  private calendarService: CalendarService;
-
-  constructor() {
-    this.calendarService = new CalendarService();
-  }
-
-  async getEvents(req: Request, res: Response): Promise<void> {
-    try {
-      const userId = (req as Request & { user?: { userId: string } }).user
-        ?.userId;
-
-      if (!userId) {
-        throw new AuthenticationRequiredError();
-      }
-
-      // Parse query parameters
-      const params: CalendarListParams = {
-        timeMin: req.query.timeMin as string,
-        timeMax: req.query.timeMax as string,
-        maxResults: req.query.maxResults
-          ? parseInt(req.query.maxResults as string)
-          : undefined,
-        singleEvents: req.query.singleEvents === 'true',
-        orderBy: req.query.orderBy as 'startTime' | 'updated',
-        pageToken: req.query.pageToken as string,
-        syncToken: req.query.syncToken as string,
-      };
-
-      const events = await this.calendarService.getEvents(userId, params);
-
-      const response: ApiResponse<CalendarListResponse> = {
-        success: true,
-        data: events,
-        message: `Successfully retrieved ${events.events.length} calendar events`,
-      };
-
-      res.status(200).json(response);
-    } catch {
-      throw new GoogleApiError(
-        'Unable to retrieve calendar events. Please try again.'
-      );
-    }
-  }
-
   async connectCalendar(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as Request & { user?: { userId: string } }).user
@@ -75,12 +28,20 @@ export class CalendarController {
         );
       }
 
-      // Exchange code for tokens and store them
-      await googleOAuthService.exchangeCodeForTokens(userId, googleCode);
+      // Add calendar connection job to queue
+      const jobId = await jobQueueService.addJob(
+        EVENT_CONSTANTS.JOB_TYPES.CONNECT_CALENDAR,
+        {
+          userId,
+          googleCode,
+        }
+      );
 
-      const response: ApiResponse = {
+      const response: ApiResponse<{ jobId: string }> = {
         success: true,
-        message: 'Google Calendar connected successfully',
+        data: { jobId },
+        message:
+          'Calendar connection started. You will be notified when complete.',
       };
 
       res.status(200).json(response);
@@ -105,6 +66,9 @@ export class CalendarController {
           googleOauthTokens: Prisma.JsonNull,
         },
       });
+
+      // Clear all events for this user
+      await eventService.clearUserEvents(userId);
 
       const response: ApiResponse = {
         success: true,

@@ -94,7 +94,10 @@ export const useAuthStore = create<AuthState>()(
           try {
             await authService.logout();
           } catch (error) {
-            console.error('Backend logout failed:', error);
+            // Backend logout failed, but we'll still clear local state
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Backend logout failed:', error);
+            }
           }
 
           clearTokens();
@@ -219,7 +222,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           const code = await googleOAuthService.requestCalendarAccess();
           return code;
-        } catch (error) {
+        } catch {
           return null;
         }
       },

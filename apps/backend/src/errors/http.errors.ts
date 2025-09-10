@@ -86,6 +86,17 @@ export class InvalidInputError extends BadRequest {
   }
 }
 
+export class BadRequestError extends BadRequest {
+  constructor(message = 'Bad request') {
+    super(message);
+    this.body = {
+      success: false,
+      error: message,
+      errorCode: AuthErrorCode.INVALID_INPUT,
+    };
+  }
+}
+
 export class DatabaseError extends InternalServerError {
   constructor(message = 'Database error occurred. Please try again') {
     super(message);

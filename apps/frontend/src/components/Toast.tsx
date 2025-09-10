@@ -1,30 +1,7 @@
-import React, { useEffect } from 'react';
+import React from 'react';
+import { Toast as ToastType } from '../stores/toastStore';
 
-export interface ToastProps {
-  id: string;
-  type: 'success' | 'error' | 'info' | 'warning';
-  title: string;
-  message: string;
-  duration?: number;
-  onClose: (id: string) => void;
-}
-
-const Toast: React.FC<ToastProps> = ({
-  id,
-  type,
-  title,
-  message,
-  duration = 3000,
-  onClose,
-}) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose(id);
-    }, duration);
-
-    return () => clearTimeout(timer);
-  }, [id, duration, onClose]);
-
+const Toast: React.FC<ToastType> = ({ id, type, title, message, onClose }) => {
   const getToastStyles = () => {
     switch (type) {
       case 'success':

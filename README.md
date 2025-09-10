@@ -71,10 +71,16 @@ The backend includes simplified Google Calendar API integration using Firebase a
 3. **No additional environment variables needed** - uses Firebase tokens
 
 ### How It Works
-1. **Frontend**: User signs in with Google via Firebase
-2. **Frontend**: User connects his Google Calendar and stores keys to the database
-3. **Backend**: Uses stored Google access tokens to fetch calendar events
-4. **Backend**: Returns simplified event data
+**Frontend**: User signs in with Google via Firebase
+**Frontend**: User connects his Google Calendar and stores keys to the database
+
+**Backend**: After calendar is connected we run a background job and sync users events dating <> 6 months
+**Backend**: Web sockets inform frontend on sync progress
+**Backend**: All synced events are stored in postgres database
+**Backend**: User can disconnect/reconnect his google calendar or "refresh/resync" it and it respectfully updates database records
+
+**Frontend**: User can create a new event which is stored in our database and synced to google calendar
+
 
 ## 📁 Structure
 

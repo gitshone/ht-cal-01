@@ -45,6 +45,12 @@ testem.log
 .DS_Store
 Thumbs.db
 
+# Log files
+*.log
+# Ignore logs directories but keep .gitkeep files
+**/logs/
+!**/logs/.gitkeep
+
 .nx/cache
 .nx/workspace-data
 .cursor/rules/nx-rules.mdc

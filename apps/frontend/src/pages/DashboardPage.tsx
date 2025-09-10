@@ -17,9 +17,13 @@ const DashboardPage: React.FC = () => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <h1 className="text-xl font-bold text-gray-900">
-                  Google Calendar
-                </h1>
+                <div className="flex items-center">
+                  <img
+                    src="/logo.png"
+                    alt="Calendar App"
+                    className="h-20 w-full"
+                  />
+                </div>
               </div>
             </div>
 

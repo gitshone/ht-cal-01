@@ -1,9 +1,14 @@
 import express from 'express';
 import cors from 'cors';
+import morgan from 'morgan';
 import { config } from 'dotenv';
+import { createServer } from 'http';
 import { prisma } from './lib/prisma';
 import routes from './routes';
 import { errorHandler } from './middleware/errorHandler.middleware';
+import { webSocketService } from './services/websocket.service';
+import { morganStream } from './utils/winston-logger';
+import logger from './utils/winston-logger';
 
 // Load environment variables
 config();
@@ -13,6 +18,12 @@ const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
 const app = express();
 
+// Create HTTP server
+const server = createServer(app);
+
+// Initialize WebSocket service
+webSocketService.initialize(server);
+
 // Middleware
 app.use(
   cors({
@@ -20,6 +31,10 @@ app.use(
     credentials: true,
   })
 );
+
+// HTTP request logging with Morgan
+app.use(morgan('combined', { stream: morganStream }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -36,17 +51,18 @@ app.use(errorHandler);
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('Shutting down gracefully...');
+  logger.info('Shutting down gracefully...');
   await prisma.$disconnect();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-  console.log('Shutting down gracefully...');
+  logger.info('Shutting down gracefully...');
   await prisma.$disconnect();
   process.exit(0);
 });
 
-app.listen(port, host, () => {
-  console.log(`[ ready ] http://${host}:${port}`);
+server.listen(port, host, () => {
+  logger.info(`Server ready at http://${host}:${port}`);
+  logger.websocket('WebSocket server initialized');
 });

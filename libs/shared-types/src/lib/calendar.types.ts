@@ -1,10 +1,73 @@
 export interface CalendarEvent {
   id: string;
   name: string;
-  date: string; // ISO date string (YYYY-MM-DD)
-  startTime: string; // ISO time string (HH:MM:SS)
-  endTime: string; // ISO time string (HH:MM:SS)
+  date: string;
+  startTime: string; 
+  endTime: string;
   isAllDay: boolean;
+}
+
+// Database Event model
+export interface Event {
+  id: string;
+  userId: string;
+  googleId?: string | null;
+  title: string;
+  startDate: Date;
+  endDate: Date;
+  isAllDay: boolean;
+  status: 'confirmed' | 'tentative' | 'cancelled';
+  googleCalendarId?: string | null;
+  googleEventId?: string | null;
+  googleHtmlLink?: string | null;
+  timezone?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  syncedAt?: Date | null;
+  displayDate?: string;
+}
+
+// Event creation/update DTOs
+export interface CreateEventDto {
+  title: string;
+  startDate: string;
+  endDate: string;
+  isAllDay: boolean;
+}
+
+export interface UpdateEventDto {
+  title?: string;
+  startDate?: string;
+  endDate?: string;
+  isAllDay?: boolean;
+  status?: 'confirmed' | 'tentative' | 'cancelled';
+}
+
+// Event filtering and grouping
+export interface EventFilterParams {
+  startDate?: string;
+  endDate?: string;
+  dateRange?: '1' | '7' | '30'; // days
+  groupBy?: 'day' | 'week';
+  limit?: number;
+  cursor?: string;
+}
+
+export interface GroupedEvents {
+  [key: string]: Event[];
+}
+
+export interface EventListResponse {
+  groupedEvents: GroupedEvents;
+  dateRange: {
+    start: string;
+    end: string;
+  };
+  groupBy: 'day' | 'week';
+  hasNextPage: boolean;
+  nextCursor?: string;
+  hasPreviousPage: boolean;
+  previousCursor?: string;
 }
 
 export interface GoogleCalendarEventData {
@@ -93,19 +156,3 @@ export interface GoogleRefreshTokenResponse {
   accessToken: string;
 }
 
-// Google Calendar API types for backend use
-export interface GoogleCalendarEventData {
-  id?: string | null;
-  summary?: string | null;
-  start?: {
-    dateTime?: string | null;
-    date?: string | null;
-    timeZone?: string | null;
-  } | null;
-  end?: {
-    dateTime?: string | null;
-    date?: string | null;
-    timeZone?: string | null;
-  } | null;
-  status?: string | null;
-}

@@ -16,20 +16,23 @@ export class CalendarService {
     return handleApiResponse(response);
   }
 
-  async connectCalendar(googleCode: string): Promise<void> {
-    const response: AxiosResponse<ApiResponse> = await apiClient.post(
-      '/api/calendar/connect',
-      {},
-      {
-        headers: {
-          'x-google-oauth-code': googleCode,
-        },
-      }
-    );
+  async connectCalendar(googleCode: string): Promise<{ jobId: string }> {
+    const response: AxiosResponse<ApiResponse<{ jobId: string }>> =
+      await apiClient.post(
+        '/api/calendar/connect',
+        {},
+        {
+          headers: {
+            'x-google-oauth-code': googleCode,
+          },
+        }
+      );
 
     if (!response.data.success) {
       throw new Error(response.data.error || 'Failed to connect calendar');
     }
+
+    return response.data.data || { jobId: '' };
   }
 
   async disconnectCalendar(): Promise<void> {
