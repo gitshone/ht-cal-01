@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { webSocketService, SyncUpdateEvent } from '../lib/websocket.service';
 import { calendarService } from '../lib/api/calendar.service';
+import { WEBSOCKET_EVENTS } from '@ht-cal-01/shared-types';
 
 export interface CalendarConnectionStatus {
   isConnecting: boolean;
@@ -71,7 +72,7 @@ export const useCalendarConnection = () => {
         }
 
         switch (event.type) {
-          case 'calendar_connection_started':
+          case WEBSOCKET_EVENTS.CALENDAR_CONNECTION_STARTED:
             return {
               ...prev,
               status: 'processing',
@@ -79,7 +80,7 @@ export const useCalendarConnection = () => {
               message: event.message || 'Calendar connection started',
             };
 
-          case 'calendar_connected':
+          case WEBSOCKET_EVENTS.CALENDAR_CONNECTED:
             return {
               ...prev,
               isConnecting: false,
@@ -90,7 +91,7 @@ export const useCalendarConnection = () => {
               error: null,
             };
 
-          case 'calendar_connection_failed':
+          case WEBSOCKET_EVENTS.CALENDAR_CONNECTION_FAILED:
             return {
               ...prev,
               isConnecting: false,

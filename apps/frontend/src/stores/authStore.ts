@@ -22,6 +22,7 @@ interface AuthState {
   setLoading: (loading: boolean) => void;
   initializeAuth: () => Promise<void>;
   getGoogleOAuthCode: () => Promise<string | null>;
+  refreshUserData: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -48,8 +49,8 @@ export const useAuthStore = create<AuthState>()(
           // Authenticate with backend
           const authResponse = await authService.loginWithFirebase(idToken);
 
-          // Store tokens
-          setTokens(authResponse.accessToken, authResponse.refreshToken);
+          // Store access token (refresh token is now in httpOnly cookie)
+          setTokens(authResponse.accessToken);
 
           // Update state
           set({
@@ -93,11 +94,8 @@ export const useAuthStore = create<AuthState>()(
           // Logout from backend
           try {
             await authService.logout();
-          } catch (error) {
+          } catch (_error) {
             // Backend logout failed, but we'll still clear local state
-            if (process.env.NODE_ENV === 'development') {
-              console.error('Backend logout failed:', error);
-            }
           }
 
           clearTokens();
@@ -224,6 +222,20 @@ export const useAuthStore = create<AuthState>()(
           return code;
         } catch {
           return null;
+        }
+      },
+
+      refreshUserData: async (): Promise<void> => {
+        try {
+          const { isAuthenticated } = get();
+          if (!isAuthenticated) {
+            return;
+          }
+
+          const userData = await authService.getCurrentUser();
+          set({ user: userData });
+        } catch (_error) {
+          // Failed to refresh user data - silently continue
         }
       },
     }),

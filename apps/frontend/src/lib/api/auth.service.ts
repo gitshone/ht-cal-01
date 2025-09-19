@@ -2,7 +2,6 @@ import { AxiosResponse } from 'axios';
 import {
   AuthResponseDto,
   FirebaseAuthDto,
-  RefreshTokenDto,
   ApiResponse,
   User,
 } from '@ht-cal-01/shared-types';
@@ -18,11 +17,9 @@ export class AuthService {
     return handleApiResponse(response);
   }
 
-  async refreshToken(refreshToken: string): Promise<{ accessToken: string }> {
+  async refreshToken(): Promise<{ accessToken: string }> {
     const response: AxiosResponse<ApiResponse<{ accessToken: string }>> =
-      await apiClient.post('/api/auth/refresh', {
-        refreshToken,
-      } as RefreshTokenDto);
+      await apiClient.post('/api/auth/refresh');
 
     return handleApiResponse(response);
   }

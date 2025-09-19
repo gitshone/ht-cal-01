@@ -44,6 +44,13 @@ export class CalendarService {
       throw new Error(response.data.error || 'Failed to disconnect calendar');
     }
   }
+
+  async getConnectionStatus(): Promise<{ connected: boolean }> {
+    const response: AxiosResponse<ApiResponse<{ connected: boolean }>> =
+      await apiClient.get('/api/calendar/status');
+
+    return handleApiResponse(response);
+  }
 }
 
 export const calendarService = new CalendarService();

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { AuthService } from '../services/auth.service';
+import { authService } from '../modules/auth';
 import { JwtPayload, ApiResponse } from '@ht-cal-01/shared-types';
 
 // Extend Express Request type to include user
@@ -8,8 +8,6 @@ declare module 'express-serve-static-core' {
     user?: JwtPayload;
   }
 }
-
-const authService = new AuthService();
 
 export const authenticate = async (
   req: Request,
@@ -48,10 +46,25 @@ export const authenticate = async (
       return;
     }
 
+    // Check if token is blacklisted
+    const isBlacklisted = await authService.isTokenBlacklisted(token);
+    if (isBlacklisted) {
+      const response: ApiResponse = {
+        success: false,
+        error: 'Token has been revoked',
+      };
+      res.status(401).json(response);
+      return;
+    }
+
     const decoded = authService.verifyAccessToken(token);
-    req.user = decoded;
+    req.user = {
+      userId: decoded.userId,
+      email: decoded.email,
+      type: decoded.type as 'access' | 'refresh',
+    };
     next();
-  } catch (error) {
+  } catch {
     const response: ApiResponse = {
       success: false,
       error: 'Invalid or expired token',

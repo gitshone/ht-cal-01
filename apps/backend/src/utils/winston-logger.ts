@@ -1,7 +1,6 @@
 import winston from 'winston';
 import path from 'path';
 
-// Define log levels
 const levels = {
   error: 0,
   warn: 1,
@@ -12,7 +11,6 @@ const levels = {
   debug: 6,
 };
 
-// Define colors for each level
 const colors = {
   error: 'red',
   warn: 'yellow',
@@ -23,10 +21,8 @@ const colors = {
   debug: 'white',
 };
 
-// Tell winston that you want to link the colors
 winston.addColors(colors);
 
-// Define which transports the logger must use
 const transports: winston.transport[] = [
   new winston.transports.Console({
     format: winston.format.combine(
@@ -39,8 +35,6 @@ const transports: winston.transport[] = [
   }),
 ];
 
-// Add file transports in both development and production
-// Only skip file logging if explicitly disabled
 if (process.env.NODE_ENV !== 'test') {
   transports.push(
     // Error log file
@@ -70,13 +64,11 @@ const logger = winston.createLogger({
   exitOnError: false,
 });
 
-// Extend the logger interface to include custom log levels
 interface ExtendedLogger extends winston.Logger {
   websocket: winston.LeveledLogMethod;
   jobqueue: winston.LeveledLogMethod;
 }
 
-// Winston logger is now ready for use
 export default logger as ExtendedLogger;
 
 export const morganStream = {

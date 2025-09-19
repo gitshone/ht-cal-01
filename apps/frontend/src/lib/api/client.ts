@@ -4,38 +4,30 @@ import { ApiResponse } from '@ht-cal-01/shared-types';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 10000;
 
-// Token management
 let accessToken: string | null = null;
-let refreshToken: string | null = null;
 
-export const setTokens = (access: string, refresh: string) => {
+export const setTokens = (access: string, refresh?: string) => {
   accessToken = access;
-  refreshToken = refresh;
   localStorage.setItem('accessToken', access);
-  localStorage.setItem('refreshToken', refresh);
 };
 
 export const getTokens = () => {
   if (!accessToken) {
     accessToken = localStorage.getItem('accessToken');
   }
-  if (!refreshToken) {
-    refreshToken = localStorage.getItem('refreshToken');
-  }
-  return { accessToken, refreshToken };
+  return { accessToken };
 };
 
 export const clearTokens = () => {
   accessToken = null;
-  refreshToken = null;
   localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
 };
 
 // Create axios instance
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_URL,
   timeout: API_TIMEOUT,
+  withCredentials: true, // Enable sending cookies
   headers: {
     'Content-Type': 'application/json',
   },
@@ -61,34 +53,35 @@ apiClient.interceptors.response.use(
   async error => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      error.response.data?.errorCode !== 'NO_GOOGLE_TOKENS' &&
+      error.response.data?.errorCode !== 'GOOGLE_AUTH_EXPIRED' &&
+      error.response.data?.errorCode !== 'CALENDAR_ACCESS_DENIED'
+    ) {
       originalRequest._retry = true;
 
-      const { refreshToken: currentRefreshToken } = getTokens();
-
-      if (currentRefreshToken) {
-        try {
-          const response = await axios.post<
-            ApiResponse<{ accessToken: string }>
-          >(`${API_URL}/api/auth/refresh`, {
-            refreshToken: currentRefreshToken,
-          });
-
-          if (response.data.success && response.data.data) {
-            const newAccessToken = response.data.data.accessToken;
-            setTokens(newAccessToken, currentRefreshToken);
-
-            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-            return apiClient(originalRequest);
+      try {
+        const response = await axios.post<ApiResponse<{ accessToken: string }>>(
+          `${API_URL}/api/auth/refresh`,
+          {},
+          {
+            withCredentials: true,
           }
-        } catch (refreshError) {
-          clearTokens();
-          window.location.href = '/login';
-          return Promise.reject(refreshError);
+        );
+
+        if (response.data.success && response.data.data) {
+          const newAccessToken = response.data.data.accessToken;
+          setTokens(newAccessToken);
+
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          return apiClient(originalRequest);
         }
-      } else {
+      } catch (refreshError) {
         clearTokens();
         window.location.href = '/login';
+        return Promise.reject(refreshError);
       }
     }
 
@@ -100,10 +93,16 @@ apiClient.interceptors.response.use(
 export const handleApiResponse = <T>(
   response: AxiosResponse<ApiResponse<T>>
 ): T => {
-  if (response.data.success && response.data.data) {
-    return response.data.data;
+  if (response.data.success) {
+    return response.data.data as T;
   }
-  throw new Error(response.data.error || 'API request failed');
+
+  const error = new Error(response.data.error || 'API request failed');
+  (error as any).errorCode = response.data.errorCode;
+  (error as any).status = response.status;
+  (error as any).fieldErrors = (response.data as any).fieldErrors;
+  (error as any).message = (response.data as any).message;
+  throw error;
 };
 
 export default apiClient;

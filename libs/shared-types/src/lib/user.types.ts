@@ -5,6 +5,7 @@ export interface User {
   lastName: string;
   createdAt: Date;
   updatedAt: Date;
+  hasEvents?: boolean; // Optional for backward compatibility
 }
 
 export interface CreateUserDto {

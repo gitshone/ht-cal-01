@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { webSocketService, SyncUpdateEvent } from '../lib/websocket.service';
 import { eventService } from '../lib/api/event.service';
+import { WEBSOCKET_EVENTS } from '@ht-cal-01/shared-types';
 
 export interface SyncStatus {
   isSyncing: boolean;
@@ -60,7 +61,7 @@ export const useSyncStatus = () => {
 
     setSyncStatus(prev => {
       switch (event.type) {
-        case 'sync_started':
+        case WEBSOCKET_EVENTS.SYNC_STARTED:
           return {
             ...prev,
             status: 'processing',
@@ -68,14 +69,14 @@ export const useSyncStatus = () => {
             message: event.message || 'Sync started',
           };
 
-        case 'sync_progress':
+        case WEBSOCKET_EVENTS.SYNC_PROGRESS:
           return {
             ...prev,
             progress: Math.min(prev.progress + 10, 90),
             message: event.message || 'Syncing events...',
           };
 
-        case 'sync_completed':
+        case WEBSOCKET_EVENTS.SYNC_COMPLETED:
           return {
             ...prev,
             isSyncing: false,
@@ -86,7 +87,7 @@ export const useSyncStatus = () => {
             error: null,
           };
 
-        case 'sync_failed':
+        case WEBSOCKET_EVENTS.SYNC_FAILED:
           return {
             ...prev,
             isSyncing: false,

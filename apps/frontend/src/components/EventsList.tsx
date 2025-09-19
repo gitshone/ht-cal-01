@@ -10,15 +10,25 @@ import {
   EventListResponse,
   CalendarErrorCode,
   CreateEventDto,
+  Event as CalendarEvent,
 } from '@ht-cal-01/shared-types';
 import EventCard from './EventCard';
-import ConfirmationModal from './ConfirmationModal';
-import RefreshConfirmationModal from './RefreshConfirmationModal';
+import ConfirmationModal from './modals/ConfirmationModal';
+import RefreshConfirmationModal from './modals/RefreshConfirmationModal';
 import { useToastStore } from '../stores/toastStore';
-import CreateEventModal from './CreateEventModal';
-import SyncStatusIndicator from './SyncStatusIndicator';
-import CalendarConnectionIndicator from './CalendarConnectionIndicator';
+import CreateEventModal from './modals/CreateEventModal';
+import UpdateEventModal from './modals/UpdateEventModal';
+import SyncStatusIndicator from './indicators/SyncStatusIndicator';
+import CalendarConnectionIndicator from './indicators/CalendarConnectionIndicator';
 import { useAuthStore } from '../stores/authStore';
+import { useViewTypeStore } from '../stores/viewTypeStore';
+import CalendarView from './CalendarView';
+import dayjs from 'dayjs';
+import weekOfYear from 'dayjs/plugin/weekOfYear';
+import isoWeek from 'dayjs/plugin/isoWeek';
+
+dayjs.extend(weekOfYear);
+dayjs.extend(isoWeek);
 
 const EventsList: React.FC = () => {
   const [groupedEvents, setGroupedEvents] = useState<GroupedEvents>({});
@@ -28,10 +38,15 @@ const EventsList: React.FC = () => {
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [showDisconnectModal, setShowDisconnectModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
+    null
+  );
   const [showRefreshModal, setShowRefreshModal] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [isCalendarConnected, setIsCalendarConnected] = useState(false);
   const [dateRange, setDateRange] = useState<'1' | '7' | '30'>('7');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [groupBy, setGroupBy] = useState<'day' | 'week'>('day');
 
   // Pagination state
@@ -46,7 +61,8 @@ const EventsList: React.FC = () => {
   const { syncStatus, startSync, resetSyncStatus } = useSyncStatus();
   const { connectionStatus, startConnection, resetConnectionStatus } =
     useCalendarConnection();
-  const { user } = useAuthStore();
+  const { user, refreshUserData } = useAuthStore();
+  const { viewType, setViewType } = useViewTypeStore();
 
   // Initialize WebSocket connection
   useEffect(() => {
@@ -59,8 +75,25 @@ const EventsList: React.FC = () => {
     };
   }, [user?.id]);
 
+  const checkConnectionStatus = useCallback(async () => {
+    if (!user?.id) {
+      return;
+    }
+
+    try {
+      const status = await calendarService.getConnectionStatus();
+      setIsCalendarConnected(status.connected);
+    } catch (_error) {
+      setIsCalendarConnected(false);
+    }
+  }, [user?.id]);
+
   const fetchEvents = useCallback(
     async (cursor?: string, append = false) => {
+      if (!user?.id) {
+        return;
+      }
+
       if (append) {
         setIsLoadingMore(true);
       } else {
@@ -77,7 +110,7 @@ const EventsList: React.FC = () => {
           {
             dateRange,
             groupBy: actualGroupBy,
-            limit: 3,
+            limit: 10,
             ...(cursor && { cursor }),
           };
 
@@ -122,16 +155,22 @@ const EventsList: React.FC = () => {
 
         setIsCalendarConnected(true);
       } catch (err: unknown) {
-        const errorData = (
-          err as {
-            response?: { data?: { error?: string; errorCode?: string } };
-          }
-        )?.response?.data;
+        const errorData = err as {
+          response?: { data?: { error?: string; errorCode?: string } };
+          errorCode?: string;
+          message?: string;
+          status?: number;
+        };
+
         const errorMessage =
-          errorData?.error ||
+          errorData?.response?.data?.error ||
+          errorData?.message ||
           'Failed to fetch calendar events. Please try again.';
         const errorCode =
-          errorData?.errorCode || CalendarErrorCode.UNKNOWN_ERROR;
+          errorData?.response?.data?.errorCode ||
+          errorData?.errorCode ||
+          CalendarErrorCode.UNKNOWN_ERROR;
+
         setError(errorMessage);
         setErrorCode(errorCode);
 
@@ -146,7 +185,7 @@ const EventsList: React.FC = () => {
         }
       }
     },
-    [dateRange]
+    [dateRange, user?.id]
   );
 
   const loadMoreEvents = useCallback(async () => {
@@ -198,16 +237,31 @@ const EventsList: React.FC = () => {
   };
 
   const handleCreateEvent = async (eventData: CreateEventDto) => {
-    try {
-      await eventService.createEvent(eventData);
-      setShowCreateModal(false);
-      showSuccess('Event Created', 'Event created successfully');
-      await fetchEvents();
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to create event';
-      showError('Create Failed', errorMessage);
-    }
+    await eventService.createEvent(eventData);
+    setShowCreateModal(false);
+    showSuccess('Event Created', 'Event created successfully');
+    await fetchEvents();
+    await refreshUserData();
+  };
+
+  const handleEventClick = (event: CalendarEvent) => {
+    setSelectedEvent(event);
+    setShowUpdateModal(true);
+  };
+
+  const handleEventUpdated = async (updatedEvent: CalendarEvent) => {
+    setShowUpdateModal(false);
+    setSelectedEvent(null);
+    showSuccess('Event Updated', 'Event updated successfully');
+    await fetchEvents();
+  };
+
+  const handleEventDeleted = async () => {
+    setShowUpdateModal(false);
+    setSelectedEvent(null);
+    showSuccess('Event Deleted', 'Event deleted successfully');
+    await fetchEvents();
+    await refreshUserData();
   };
 
   const handleDisconnectCalendar = async () => {
@@ -266,8 +320,18 @@ const EventsList: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
+    if (isInitialLoad) {
+      setDateRange('7');
+      setIsInitialLoad(false);
+    }
+  }, [isInitialLoad]);
+
+  useEffect(() => {
+    if (user?.id) {
+      checkConnectionStatus();
+      fetchEvents();
+    }
+  }, [checkConnectionStatus, fetchEvents, user?.id, dateRange]);
 
   // Reset pagination when date range changes
   useEffect(() => {
@@ -352,6 +416,15 @@ const EventsList: React.FC = () => {
     );
   }
 
+  if (!user || user.hasEvents === undefined) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2 text-gray-600">Loading...</span>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -361,53 +434,164 @@ const EventsList: React.FC = () => {
     );
   }
 
-  // Only show "No events" state if calendar is connected and there are no events
-  if (
-    Object.keys(groupedEvents).length === 0 &&
-    isCalendarConnected &&
-    !error
-  ) {
+  // Show "No events" state only if user has no events at all
+  const shouldShowEmptyState =
+    user?.hasEvents === false &&
+    !error &&
+    !isLoading &&
+    !showCreateModal &&
+    !showRefreshModal &&
+    !showDisconnectModal &&
+    !showUpdateModal;
+
+  // Determine if user has events but none in current range
+  const hasEventsButNoneInRange =
+    user?.hasEvents === true && Object.keys(groupedEvents).length === 0;
+
+  if (shouldShowEmptyState) {
     return (
-      <div className="text-center py-12">
-        <svg
-          className="mx-auto h-12 w-12 text-gray-400"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-          />
-        </svg>
-        <h3 className="mt-2 text-sm font-medium text-gray-900">No events</h3>
-        <p className="mt-1 text-sm text-gray-500">
-          Get started by creating a new event.
-        </p>
-        <div className="mt-6">
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+      <>
+        <SyncStatusIndicator
+          syncStatus={syncStatus}
+          onClose={resetSyncStatus}
+        />
+        <CalendarConnectionIndicator
+          connectionStatus={connectionStatus}
+          onClose={resetConnectionStatus}
+        />
+        <div className="text-center py-12">
+          <svg
+            className="mx-auto h-12 w-12 text-gray-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
           >
-            <svg
-              className="-ml-1 mr-2 h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              />
-            </svg>
-            Create Event
-          </button>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
+          </svg>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No events</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {isCalendarConnected
+              ? 'Get started by creating a new event.'
+              : 'Connect your Google Calendar to sync events or create new ones.'}
+          </p>
+          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+            {isCalendarConnected ? (
+              <>
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <svg
+                    className="-ml-1 mr-2 h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    />
+                  </svg>
+                  Create Event
+                </button>
+                <button
+                  onClick={handleRefreshClick}
+                  disabled={syncStatus.isSyncing}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  {syncStatus.isSyncing ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                  ) : (
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                  )}
+                  {syncStatus.isSyncing ? 'Syncing...' : 'Sync Calendar'}
+                </button>
+                <button
+                  onClick={() => setShowDisconnectModal(true)}
+                  className="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  Disconnect Calendar
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => googleOAuthService.requestCalendarAccess()}
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <svg
+                  className="-ml-1 mr-2 h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                  />
+                </svg>
+                Connect Google Calendar
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+
+        {/* Modals */}
+        <ConfirmationModal
+          isOpen={showDisconnectModal}
+          onClose={() => setShowDisconnectModal(false)}
+          onConfirm={handleDisconnectCalendar}
+          title="Disconnect Calendar"
+          message="Are you sure you want to disconnect your calendar? This will remove all synced events and you'll need to reconnect to access your calendar again."
+          confirmText="Disconnect"
+          isDestructive={true}
+          isLoading={isDisconnecting}
+        />
+
+        <CreateEventModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onCreateEvent={handleCreateEvent}
+        />
+
+        <UpdateEventModal
+          isOpen={showUpdateModal}
+          onClose={() => {
+            setShowUpdateModal(false);
+            setSelectedEvent(null);
+          }}
+          event={selectedEvent}
+          onEventUpdated={handleEventUpdated}
+          onEventDeleted={handleEventDeleted}
+        />
+
+        <RefreshConfirmationModal
+          isOpen={showRefreshModal}
+          onClose={() => setShowRefreshModal(false)}
+          onConfirm={handleRefreshConfirm}
+          isLoading={syncStatus.isSyncing}
+        />
+      </>
     );
   }
 
@@ -453,52 +637,39 @@ const EventsList: React.FC = () => {
   }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    const date = dayjs(dateString);
+    return date.format('dddd, MMMM D, YYYY');
   };
 
   const formatWeek = (weekKey: string) => {
-    // Handle ISO week format: "2025-W36"
+    // Handle ISO week format: "2025-W01", "2025-W36", etc.
     if (weekKey.includes('W')) {
       const [year, week] = weekKey.split('-W');
-      const startOfWeek = new Date(parseInt(year), 0, 1);
-      const dayOfYear = (parseInt(week) - 1) * 7;
-      startOfWeek.setDate(startOfWeek.getDate() + dayOfYear);
+      const weekNumber = parseInt(week);
 
-      const dayOfWeek = startOfWeek.getDay();
-      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      startOfWeek.setDate(startOfWeek.getDate() + mondayOffset);
+      const yearStart = dayjs(`${year}-01-01`);
 
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(endOfWeek.getDate() + 6);
+      const firstMonday =
+        yearStart.day() === 1
+          ? yearStart
+          : yearStart.add(8 - yearStart.day(), 'day');
 
-      return `${startOfWeek.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      })} - ${endOfWeek.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      })}, ${startOfWeek.getFullYear()}`;
+      const weekStart = firstMonday.add((weekNumber - 1) * 7, 'day');
+      const weekEnd = weekStart.add(6, 'day');
+
+      if (weekStart.month() === weekEnd.month()) {
+        return `${weekStart.format('MMM D')} - ${weekEnd.format('D, YYYY')}`;
+      } else {
+        return `${weekStart.format('MMM D')} - ${weekEnd.format(
+          'MMM D, YYYY'
+        )}`;
+      }
     }
 
-    // Handle date format
-    const start = new Date(weekKey);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 6);
+    const start = dayjs(weekKey);
+    const end = start.add(6, 'day');
 
-    return `${start.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    })} - ${end.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })}`;
+    return `${start.format('MMM D')} - ${end.format('MMM D, YYYY')}`;
   };
 
   return (
@@ -532,20 +703,38 @@ const EventsList: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-sm font-medium text-gray-700">
-                  Time Range:
+                  View:
                 </label>
                 <select
-                  value={dateRange}
+                  value={viewType}
                   onChange={e =>
-                    setDateRange(e.target.value as '1' | '7' | '30')
+                    setViewType(e.target.value as 'list' | 'calendar')
                   }
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                 >
-                  <option value="1">1 Day</option>
-                  <option value="7">7 Days</option>
-                  <option value="30">30 Days</option>
+                  <option value="list">List View</option>
+                  <option value="calendar">Calendar View</option>
                 </select>
               </div>
+
+              {viewType === 'list' && (
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Time Range:
+                  </label>
+                  <select
+                    value={dateRange}
+                    onChange={e =>
+                      setDateRange(e.target.value as '1' | '7' | '30')
+                    }
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  >
+                    <option value="1">1 Day</option>
+                    <option value="7">7 Days</option>
+                    <option value="30">30 Days</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -608,67 +797,118 @@ const EventsList: React.FC = () => {
           </div>
         </div>
 
-        {/* Events grouped by day or week */}
-        <div className="space-y-8">
-          {Object.entries(groupedEvents).map(([dateKey, dayEvents]) => (
-            <div
-              key={dateKey}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
-            >
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-5 border-b border-gray-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                      {groupBy === 'week'
-                        ? formatWeek(dateKey)
-                        : formatDate(dateKey)}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      {dayEvents.length} event
-                      {dayEvents.length !== 1 ? 's' : ''}
-                    </p>
+        {/* Conditional rendering based on view type */}
+        {viewType === 'calendar' ? (
+          <CalendarView
+            onCreateEvent={handleCreateEvent}
+            onEventClick={handleEventClick}
+            groupBy={groupBy}
+          />
+        ) : (
+          /* Events grouped by day or week */
+          <div className="space-y-8">
+            {Object.keys(groupedEvents).length > 0 ? (
+              Object.entries(groupedEvents).map(([dateKey, dayEvents]) => (
+                <div
+                  key={dateKey}
+                  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+                >
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-5 border-b border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xl font-semibold text-gray-900 mb-1">
+                          {groupBy === 'week'
+                            ? formatWeek(dateKey)
+                            : formatDate(dateKey)}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          {dayEvents.length} event
+                          {dayEvents.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <div className="flex items-center">
+                        {groupBy === 'week' ? (
+                          <svg
+                            className="h-5 w-5 text-blue-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            />
+                          </svg>
+                        ) : (
+                          <svg
+                            className="h-5 w-5 text-blue-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center">
-                    {groupBy === 'week' ? (
-                      <svg
-                        className="h-5 w-5 text-blue-500"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    ) : (
-                      <svg
-                        className="h-5 w-5 text-blue-500"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    )}
+                  <div className="p-6 space-y-4">
+                    {dayEvents.map(event => (
+                      <EventCard
+                        key={event.id}
+                        event={event}
+                        onClick={handleEventClick}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))
+            ) : hasEventsButNoneInRange ? (
+              /* Info box when user has events but none in current range */
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-5 w-5 text-blue-400"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-blue-800">
+                      No events in selected range
+                    </h3>
+                    <div className="mt-2 text-sm text-blue-700">
+                      <p>
+                        No events found in the selected{' '}
+                        {dateRange === '1'
+                          ? '1 day'
+                          : dateRange === '7'
+                          ? '7 days'
+                          : '30 days'}{' '}
+                        range. Try adjusting the time range or create a new
+                        event.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="p-6 space-y-4">
-                {dayEvents.map(event => (
-                  <EventCard key={event.id} event={event} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+            ) : null}
+          </div>
+        )}
 
         {/* Load More Button */}
         {pagination.hasNextPage && (
@@ -721,6 +961,17 @@ const EventsList: React.FC = () => {
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
           onCreateEvent={handleCreateEvent}
+        />
+
+        <UpdateEventModal
+          isOpen={showUpdateModal}
+          onClose={() => {
+            setShowUpdateModal(false);
+            setSelectedEvent(null);
+          }}
+          event={selectedEvent}
+          onEventUpdated={handleEventUpdated}
+          onEventDeleted={handleEventDeleted}
         />
 
         <RefreshConfirmationModal

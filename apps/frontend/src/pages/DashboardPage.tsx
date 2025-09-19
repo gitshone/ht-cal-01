@@ -21,7 +21,7 @@ const DashboardPage: React.FC = () => {
                   <img
                     src="/logo.png"
                     alt="Calendar App"
-                    className="h-20 w-full"
+                    className="h-12 w-full"
                   />
                 </div>
               </div>

@@ -1,14 +1,8 @@
 import { io, Socket } from 'socket.io-client';
+import { WebSocketEvent, WEBSOCKET_EVENTS } from '@ht-cal-01/shared-types';
 
 export interface SyncUpdateEvent {
-  type:
-    | 'sync_started'
-    | 'sync_progress'
-    | 'sync_completed'
-    | 'sync_failed'
-    | 'calendar_connection_started'
-    | 'calendar_connected'
-    | 'calendar_connection_failed';
+  type: WebSocketEvent['type'];
   userId: string;
   jobId: string;
   data?: Record<string, unknown>;
@@ -35,7 +29,7 @@ class WebSocketService {
 
     this.socket.on('connect', () => {
       this.isConnected = true;
-      this.socket?.emit('authenticate', { userId });
+      this.socket?.emit(WEBSOCKET_EVENTS.AUTHENTICATE, { userId });
     });
 
     this.socket.on('disconnect', () => {
@@ -43,13 +37,10 @@ class WebSocketService {
     });
 
     this.socket.on('connect_error', error => {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('WebSocket connection error:', error);
-      }
       this.isConnected = false;
     });
 
-    this.socket.on('sync_update', (event: SyncUpdateEvent) => {
+    this.socket.on(WEBSOCKET_EVENTS.SYNC_UPDATE, (event: SyncUpdateEvent) => {
       // Create unique event ID to prevent duplicate processing
       const eventId = `${event.type}-${event.jobId}-${event.userId}`;
 

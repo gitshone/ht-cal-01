@@ -5,7 +5,7 @@ import { useToastStore } from '../stores/toastStore';
 import LoginPage from '../pages/LoginPage';
 import DashboardPage from '../pages/DashboardPage';
 import ProtectedRoute from '../components/ProtectedRoute';
-import ToastContainer from '../components/ToastContainer';
+import ToastContainer from '../components/toast/ToastContainer';
 
 export function App() {
   const { initializeAuth } = useAuthStore();

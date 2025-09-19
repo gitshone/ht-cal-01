@@ -1,12 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
 import { config } from 'dotenv';
 import { createServer } from 'http';
 import { prisma } from './lib/prisma';
 import routes from './routes';
 import { errorHandler } from './middleware/errorHandler.middleware';
-import { webSocketService } from './services/websocket.service';
+import { webSocketService } from './modules/sockets';
+import { bullQueueService } from './modules/queue';
 import { morganStream } from './utils/winston-logger';
 import logger from './utils/winston-logger';
 
@@ -29,11 +31,17 @@ app.use(
   cors({
     origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-google-oauth-code'],
+    exposedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
 // HTTP request logging with Morgan
 app.use(morgan('combined', { stream: morganStream }));
+
+// Cookie parser middleware
+app.use(cookieParser());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -52,12 +60,14 @@ app.use(errorHandler);
 // Graceful shutdown
 process.on('SIGINT', async () => {
   logger.info('Shutting down gracefully...');
+  await bullQueueService.close();
   await prisma.$disconnect();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   logger.info('Shutting down gracefully...');
+  await bullQueueService.close();
   await prisma.$disconnect();
   process.exit(0);
 });

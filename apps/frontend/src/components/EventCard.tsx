@@ -1,17 +1,22 @@
 import React from 'react';
-import { Event } from '@ht-cal-01/shared-types';
-import moment from 'moment';
+import { Event as CalendarEvent } from '@ht-cal-01/shared-types';
+import dayjs from 'dayjs';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+
+dayjs.extend(isSameOrBefore);
+dayjs.extend(isSameOrAfter);
 
 interface EventCardProps {
-  event: Event;
+  event: CalendarEvent;
+  onClick?: (event: CalendarEvent) => void;
 }
 
-const EventCard: React.FC<EventCardProps> = ({ event }) => {
-  const now = moment();
-  const startDate = moment(event.startDate);
-  const endDate = moment(event.endDate);
+const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
+  const now = dayjs();
+  const startDate = dayjs(event.startDate);
+  const endDate = dayjs(event.endDate);
 
-  // Determine event status based on current time
   const getEventStatus = () => {
     if (event.isAllDay) {
       if (endDate.isBefore(now, 'day')) {
@@ -41,15 +46,13 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
   const isEventUpcoming = eventStatus === 'upcoming';
 
   const formatDate = (date: Date) => {
-    const momentDate = moment(date);
-    if (momentDate.isSame(moment(), 'day')) return 'Today';
-    if (momentDate.isSame(moment().add(1, 'day'), 'day')) return 'Tomorrow';
-    if (momentDate.isSame(moment().subtract(1, 'day'), 'day'))
-      return 'Yesterday';
-    return momentDate.format('MMM D, YYYY');
+    const dayjsDate = dayjs(date);
+    if (dayjsDate.isSame(dayjs(), 'day')) return 'Today';
+    if (dayjsDate.isSame(dayjs().add(1, 'day'), 'day')) return 'Tomorrow';
+    if (dayjsDate.isSame(dayjs().subtract(1, 'day'), 'day')) return 'Yesterday';
+    return dayjsDate.format('MMM D, YYYY');
   };
 
-  // Get border color based on status
   const getBorderColor = () => {
     if (isEventPast) return 'border-l-gray-300';
     if (isEventInProgress) return 'border-l-orange-500';
@@ -62,7 +65,8 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
         isEventPast
           ? `${getBorderColor()} border border-gray-100 opacity-75`
           : `${getBorderColor()} border border-gray-100 hover:border-l-blue-600`
-      }`}
+      } ${onClick ? 'cursor-pointer' : ''}`}
+      onClick={() => onClick?.(event)}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
@@ -92,13 +96,13 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
                 />
               </svg>
               <span className="truncate">
-                {(event as Event & { displayDate?: string }).displayDate ||
-                  formatDate(event.startDate)}
+                {(event as CalendarEvent & { displayDate?: string })
+                  .displayDate || formatDate(event.startDate)}
               </span>
             </div>
           </div>
 
-          {(event as Event & { timezone?: string }).timezone && (
+          {(event as CalendarEvent & { timezone?: string }).timezone && (
             <div className="flex items-center text-xs text-gray-500">
               <svg
                 className="h-3 w-3 mr-1 text-gray-400"
@@ -113,7 +117,7 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
                   d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              {(event as Event & { timezone?: string }).timezone}
+              {(event as CalendarEvent & { timezone?: string }).timezone}
             </div>
           )}
         </div>
