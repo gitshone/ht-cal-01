@@ -89,3 +89,35 @@ export const useDeleteUnavailabilityBlock = () => {
     },
   });
 };
+
+export const useUploadLogo = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (file: File) => settingsService.uploadLogo(file),
+    onSuccess: (data: UserSettings) => {
+      queryClient.setQueryData(settingsKeys.userSettings(), data);
+    },
+    onError: () => {
+      queryClient.invalidateQueries({
+        queryKey: settingsKeys.userSettings(),
+      });
+    },
+  });
+};
+
+export const useDeleteLogo = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => settingsService.deleteLogo(),
+    onSuccess: (data: UserSettings) => {
+      queryClient.setQueryData(settingsKeys.userSettings(), data);
+    },
+    onError: () => {
+      queryClient.invalidateQueries({
+        queryKey: settingsKeys.userSettings(),
+      });
+    },
+  });
+};

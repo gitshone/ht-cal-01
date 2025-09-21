@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
 import { UserSettings, UpdateUserSettingsDto } from '@ht-cal-01/shared-types';
+import { ImageUpload } from '../ImageUpload';
+import {
+  useUploadLogo,
+  useDeleteLogo,
+} from '../../hooks/queries/settingsQueries';
 
 interface InviteCustomizationTabProps {
   settings: UserSettings;
@@ -23,9 +28,6 @@ const InviteCustomizationTab: React.FC<InviteCustomizationTabProps> = ({
   const [inviteDescription, setInviteDescription] = useState(
     settings.inviteDescription || ''
   );
-  const [inviteLogoUrl, setInviteLogoUrl] = useState(
-    settings.inviteLogoUrl || ''
-  );
   const [availableDurations, setAvailableDurations] = useState(
     settings.availableDurations
   );
@@ -34,6 +36,10 @@ const InviteCustomizationTab: React.FC<InviteCustomizationTabProps> = ({
   );
   const [isSaving, setIsSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // React Query mutations
+  const uploadLogoMutation = useUploadLogo();
+  const deleteLogoMutation = useDeleteLogo();
 
   const getFieldError = (fieldName: string) => {
     return fieldErrors[fieldName];
@@ -53,7 +59,6 @@ const InviteCustomizationTab: React.FC<InviteCustomizationTabProps> = ({
       await onSaveSettings({
         inviteTitle,
         inviteDescription,
-        inviteLogoUrl,
       });
     } catch (error: unknown) {
       const errorData = error as {
@@ -173,6 +178,74 @@ const InviteCustomizationTab: React.FC<InviteCustomizationTabProps> = ({
     }
   };
 
+  const handleLogoUpload = async (file: File) => {
+    setFieldErrors({});
+    try {
+      await uploadLogoMutation.mutateAsync(file);
+    } catch (error: unknown) {
+      const errorData = error as {
+        response?: {
+          data?: {
+            fieldErrors?: Record<string, string>;
+            error?: string;
+            message?: string;
+          };
+        };
+        fieldErrors?: Record<string, string>;
+        error?: string;
+        message?: string;
+      };
+
+      if (errorData?.fieldErrors) {
+        setFieldErrors(errorData.fieldErrors);
+      } else if (errorData?.response?.data?.fieldErrors) {
+        setFieldErrors(errorData.response.data.fieldErrors);
+      } else {
+        const errorMessage =
+          errorData?.response?.data?.error ||
+          errorData?.response?.data?.message ||
+          errorData?.error ||
+          errorData?.message ||
+          'Failed to upload logo. Please try again.';
+        setFieldErrors({ logo: errorMessage });
+      }
+    }
+  };
+
+  const handleLogoDelete = async () => {
+    setFieldErrors({});
+    try {
+      await deleteLogoMutation.mutateAsync();
+    } catch (error: unknown) {
+      const errorData = error as {
+        response?: {
+          data?: {
+            fieldErrors?: Record<string, string>;
+            error?: string;
+            message?: string;
+          };
+        };
+        fieldErrors?: Record<string, string>;
+        error?: string;
+        message?: string;
+      };
+
+      if (errorData?.fieldErrors) {
+        setFieldErrors(errorData.fieldErrors);
+      } else if (errorData?.response?.data?.fieldErrors) {
+        setFieldErrors(errorData.response.data.fieldErrors);
+      } else {
+        const errorMessage =
+          errorData?.response?.data?.error ||
+          errorData?.response?.data?.message ||
+          errorData?.error ||
+          errorData?.message ||
+          'Failed to delete logo. Please try again.';
+        setFieldErrors({ logo: errorMessage });
+      }
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Meeting Availability */}
@@ -282,22 +355,37 @@ const InviteCustomizationTab: React.FC<InviteCustomizationTabProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Logo URL
+              Logo
             </label>
-            <input
-              type="url"
-              value={inviteLogoUrl}
-              onChange={e => setInviteLogoUrl(e.target.value)}
-              placeholder="https://example.com/logo.png"
-              className={getFieldClassName(
-                'inviteLogoUrl',
-                'w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-              )}
+            <ImageUpload
+              onImageSelect={handleLogoUpload}
+              currentImage={
+                settings.inviteLogoUrl && settings.inviteLogoUrl.trim()
+                  ? settings.inviteLogoUrl
+                  : undefined
+              }
+              disabled={
+                uploadLogoMutation.isPending || deleteLogoMutation.isPending
+              }
+              isLoading={uploadLogoMutation.isPending}
             />
-            {getFieldError('inviteLogoUrl') && (
+            {getFieldError('logo') && (
               <p className="mt-1 text-sm text-red-600">
-                {getFieldError('inviteLogoUrl')}
+                {getFieldError('logo')}
               </p>
+            )}
+            {settings.inviteLogoUrl && (
+              <div className="mt-2">
+                <button
+                  onClick={handleLogoDelete}
+                  disabled={
+                    uploadLogoMutation.isPending || deleteLogoMutation.isPending
+                  }
+                  className="text-sm text-red-600 hover:text-red-800 disabled:opacity-50"
+                >
+                  {deleteLogoMutation.isPending ? 'Deleting...' : 'Remove logo'}
+                </button>
+              </div>
             )}
           </div>
         </div>

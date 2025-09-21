@@ -1,5 +1,6 @@
 import { SettingsRepository } from './settings.repository';
 import { BaseService } from '../../core/base.service';
+import { FileStorageService } from '../file-storage/file-storage.service';
 import {
   UserSettings,
   UnavailabilityBlock,
@@ -10,10 +11,15 @@ import {
 
 export class SettingsService extends BaseService {
   private settingsRepository: SettingsRepository;
+  private fileStorageService: FileStorageService;
 
-  constructor(settingsRepository: SettingsRepository) {
+  constructor(
+    settingsRepository: SettingsRepository,
+    fileStorageService: FileStorageService
+  ) {
     super();
     this.settingsRepository = settingsRepository;
+    this.fileStorageService = fileStorageService;
   }
 
   async getUserSettings(userId: string): Promise<UserSettings> {
@@ -26,6 +32,20 @@ export class SettingsService extends BaseService {
         availableDurations: [15, 30, 60],
         acceptsNewMeetings: true,
       });
+    }
+
+    if (settings.inviteLogoKey && !settings.inviteLogoUrl) {
+      try {
+        const logoUrl = await this.fileStorageService.getLogoUrl(
+          settings.inviteLogoKey
+        );
+        settings.inviteLogoUrl = logoUrl;
+      } catch (error) {
+        this.logError('Failed to generate logo URL', error as Error, {
+          userId,
+          logoKey: settings.inviteLogoKey,
+        });
+      }
     }
 
     return settings;
@@ -117,6 +137,80 @@ export class SettingsService extends BaseService {
     userId: string
   ): Promise<UnavailabilityBlock[]> {
     return await this.settingsRepository.getUserUnavailabilityBlocks(userId);
+  }
+
+  async uploadLogo(
+    userId: string,
+    file: Express.Multer.File
+  ): Promise<UserSettings> {
+    try {
+      // Validate the file
+      this.fileStorageService.validateImageFile(file);
+
+      // Upload to S3
+      const uploadResult = await this.fileStorageService.uploadLogo(
+        userId,
+        file
+      );
+
+      // Get current settings
+      const currentSettings = await this.getUserSettings(userId);
+
+      // Delete old logo if it exists
+      if (currentSettings.inviteLogoKey) {
+        try {
+          await this.fileStorageService.deleteLogo(
+            currentSettings.inviteLogoKey
+          );
+        } catch (error) {
+          this.logError('Failed to delete old logo', error as Error, {
+            userId,
+            oldKey: currentSettings.inviteLogoKey,
+          });
+        }
+      }
+
+      // Update settings with new logo key and URL
+      const updatedSettings = await this.settingsRepository.updateUserSettings(
+        userId,
+        {
+          inviteLogoKey: uploadResult.key,
+          inviteLogoUrl: uploadResult.url,
+        }
+      );
+
+      return updatedSettings;
+    } catch (error) {
+      this.logError('Failed to upload logo', error as Error, { userId });
+      throw error;
+    }
+  }
+
+  async deleteLogo(userId: string): Promise<UserSettings> {
+    try {
+      const currentSettings = await this.getUserSettings(userId);
+
+      if (!currentSettings.inviteLogoKey) {
+        throw new Error('No logo to delete');
+      }
+
+      // Delete from S3
+      await this.fileStorageService.deleteLogo(currentSettings.inviteLogoKey);
+
+      // Update settings to remove logo
+      const updatedSettings = await this.settingsRepository.updateUserSettings(
+        userId,
+        {
+          inviteLogoKey: null,
+          inviteLogoUrl: null,
+        }
+      );
+
+      return updatedSettings;
+    } catch (error) {
+      this.logError('Failed to delete logo', error as Error, { userId });
+      throw error;
+    }
   }
 
   // Validation methods

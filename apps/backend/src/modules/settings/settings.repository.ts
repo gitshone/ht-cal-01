@@ -28,6 +28,7 @@ export class SettingsRepository extends BaseRepository {
         inviteTitle: data.inviteTitle || null,
         inviteDescription: data.inviteDescription || null,
         inviteLogoUrl: data.inviteLogoUrl || null,
+        inviteLogoKey: data.inviteLogoKey || null,
         availableDurations: data.availableDurations || [15, 30, 60],
         acceptsNewMeetings:
           data.acceptsNewMeetings !== undefined
@@ -59,6 +60,9 @@ export class SettingsRepository extends BaseRepository {
         ...(data.inviteLogoUrl !== undefined && {
           inviteLogoUrl: data.inviteLogoUrl,
         }),
+        ...(data.inviteLogoKey !== undefined && {
+          inviteLogoKey: data.inviteLogoKey,
+        }),
         ...(data.availableDurations !== undefined && {
           availableDurations: data.availableDurations,
         }),
@@ -77,7 +81,6 @@ export class SettingsRepository extends BaseRepository {
     });
   }
 
-  // Unavailability Blocks methods
   async createUnavailabilityBlock(
     userId: string,
     data: CreateUnavailabilityBlockDto
@@ -103,7 +106,7 @@ export class SettingsRepository extends BaseRepository {
     const block = await this.prisma.unavailabilityBlock.update({
       where: {
         id: blockId,
-        userId, // Ensure user owns this block
+        userId,
       },
       data: {
         ...(data.title !== undefined && { title: data.title }),
@@ -123,7 +126,7 @@ export class SettingsRepository extends BaseRepository {
     await this.prisma.unavailabilityBlock.delete({
       where: {
         id: blockId,
-        userId, // Ensure user owns this block
+        userId,
       },
     });
   }

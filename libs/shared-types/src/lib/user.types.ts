@@ -52,6 +52,7 @@ export interface UserSettings {
   inviteTitle?: string;
   inviteDescription?: string;
   inviteLogoUrl?: string;
+  inviteLogoKey?: string; // S3 key for the logo file
   availableDurations: number[]; // Available meeting durations in minutes
   acceptsNewMeetings: boolean; // Whether user accepts new meeting requests
   createdAt: Date;
@@ -76,6 +77,7 @@ export interface CreateUserSettingsDto {
   inviteTitle?: string;
   inviteDescription?: string;
   inviteLogoUrl?: string;
+  inviteLogoKey?: string;
   availableDurations?: number[];
   acceptsNewMeetings?: boolean;
 }
@@ -85,7 +87,8 @@ export interface UpdateUserSettingsDto {
   timezone?: string;
   inviteTitle?: string;
   inviteDescription?: string;
-  inviteLogoUrl?: string;
+  inviteLogoUrl?: string | null;
+  inviteLogoKey?: string | null;
   availableDurations?: number[];
   acceptsNewMeetings?: boolean;
 }

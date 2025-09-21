@@ -12,6 +12,7 @@ import { AuthService } from '../../modules/auth/auth.service';
 import { EventsService } from '../../modules/events/events.service';
 import { CalendarService } from '../../modules/calendar/calendar.service';
 import { SettingsService } from '../../modules/settings/settings.service';
+import { FileStorageService } from '../../modules/file-storage/file-storage.service';
 import { QueueService } from '../../modules/queue/queue.service';
 import { BullQueueService } from '../../modules/queue/bull-queue.service';
 import { SocketsService } from '../../modules/sockets/sockets.service';
@@ -21,6 +22,7 @@ import { AuthController } from '../../modules/auth/auth.controller';
 import { EventsController } from '../../modules/events/events.controller';
 import { CalendarController } from '../../modules/calendar/calendar.controller';
 import { SettingsController } from '../../modules/settings/settings.controller';
+import { FileStorageController } from '../../modules/file-storage/file-storage.controller';
 import { QueueController } from '../../modules/queue/queue.controller';
 import { HealthController } from '../../modules/health/health.controller';
 
@@ -59,8 +61,10 @@ export function registerAllProviders(): void {
     ],
   });
 
+  registerProvider(providers.FILE_STORAGE_SERVICE, FileStorageService);
+
   registerProvider(providers.SETTINGS_SERVICE, SettingsService, {
-    deps: [providers.SETTINGS_REPOSITORY],
+    deps: [providers.SETTINGS_REPOSITORY, providers.FILE_STORAGE_SERVICE],
   });
 
   registerProvider(providers.QUEUE_SERVICE, QueueService, {
@@ -107,6 +111,10 @@ export function registerAllProviders(): void {
 
   registerProvider(providers.SETTINGS_CONTROLLER, SettingsController, {
     deps: [providers.SETTINGS_SERVICE],
+  });
+
+  registerProvider(providers.FILE_STORAGE_CONTROLLER, FileStorageController, {
+    deps: [providers.FILE_STORAGE_SERVICE],
   });
 
   registerProvider(providers.QUEUE_CONTROLLER, QueueController, {

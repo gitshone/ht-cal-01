@@ -72,5 +72,21 @@ export const createSettingsRoutes = (
     )
   );
 
+  // Logo upload routes
+  router.post(
+    '/logo',
+    settingsController.getUploadMiddleware(),
+    settingsController.handleAsync(
+      settingsController.uploadLogo.bind(settingsController)
+    )
+  );
+
+  router.delete(
+    '/logo',
+    settingsController.handleAsync(
+      settingsController.deleteLogo.bind(settingsController)
+    )
+  );
+
   return router;
 };

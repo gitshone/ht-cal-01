@@ -93,6 +93,7 @@ model UserSettings {
   inviteTitle        String? @map("invite_title")
   inviteDescription  String? @map("invite_description")
   inviteLogoUrl      String? @map("invite_logo_url")
+  inviteLogoKey      String? @map("invite_logo_key") // S3 key for the logo file
   availableDurations Int[]   @default([15, 30, 60]) // Available meeting durations in minutes
   acceptsNewMeetings Boolean @default(true) @map("accepts_new_meetings") // Whether user accepts new meeting requests
   

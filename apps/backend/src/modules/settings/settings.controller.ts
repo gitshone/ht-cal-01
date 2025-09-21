@@ -1,11 +1,19 @@
 import { Request, Response } from 'express';
 import { BaseController } from '../../core/base.controller';
 import { SettingsService } from './settings.service';
+import multer from 'multer';
 import {
   UpdateUserSettingsDto,
   CreateUnavailabilityBlockDto,
   UpdateUnavailabilityBlockDto,
 } from '@ht-cal-01/shared-types';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
+});
 
 export class SettingsController extends BaseController {
   constructor(private settingsService: SettingsService) {
@@ -128,5 +136,40 @@ export class SettingsController extends BaseController {
     } catch (error) {
       this.sendError(res, 'Failed to retrieve unavailability blocks', 500);
     }
+  }
+
+  async uploadLogo(req: Request, res: Response): Promise<void> {
+    const userId = this.getUserId(req);
+
+    if (!req.file) {
+      this.sendError(res, 'No file uploaded', 400);
+      return;
+    }
+
+    try {
+      const settings = await this.settingsService.uploadLogo(userId, req.file);
+      this.sendSuccess(res, settings, 'Logo uploaded successfully');
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to upload logo';
+      this.sendError(res, errorMessage, 400);
+    }
+  }
+
+  async deleteLogo(req: Request, res: Response): Promise<void> {
+    const userId = this.getUserId(req);
+
+    try {
+      const settings = await this.settingsService.deleteLogo(userId);
+      this.sendSuccess(res, settings, 'Logo deleted successfully');
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to delete logo';
+      this.sendError(res, errorMessage, 400);
+    }
+  }
+
+  getUploadMiddleware() {
+    return upload.single('logo');
   }
 }

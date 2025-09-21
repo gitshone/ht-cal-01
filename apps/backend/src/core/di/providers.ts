@@ -8,6 +8,7 @@ export const AUTH_SERVICE = Symbol('AuthService');
 export const EVENTS_SERVICE = Symbol('EventsService');
 export const CALENDAR_SERVICE = Symbol('CalendarService');
 export const SETTINGS_SERVICE = Symbol('SettingsService');
+export const FILE_STORAGE_SERVICE = Symbol('FileStorageService');
 export const QUEUE_SERVICE = Symbol('QueueService');
 export const BULL_QUEUE_SERVICE = Symbol('BullQueueService');
 export const SOCKETS_SERVICE = Symbol('SocketsService');
@@ -17,6 +18,7 @@ export const AUTH_CONTROLLER = Symbol('AuthController');
 export const EVENTS_CONTROLLER = Symbol('EventsController');
 export const CALENDAR_CONTROLLER = Symbol('CalendarController');
 export const SETTINGS_CONTROLLER = Symbol('SettingsController');
+export const FILE_STORAGE_CONTROLLER = Symbol('FileStorageController');
 export const QUEUE_CONTROLLER = Symbol('QueueController');
 export const HEALTH_CONTROLLER = Symbol('HealthController');
 

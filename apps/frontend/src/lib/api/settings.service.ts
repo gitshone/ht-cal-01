@@ -6,6 +6,7 @@ import {
   CreateUnavailabilityBlockDto,
   UpdateUnavailabilityBlockDto,
 } from '@ht-cal-01/shared-types';
+import { logoService } from './logo.service';
 
 export const settingsService = {
   async getUserSettings(): Promise<UserSettings> {
@@ -51,5 +52,16 @@ export const settingsService = {
 
   async deleteUnavailabilityBlock(id: string): Promise<void> {
     await apiClient.delete(`/api/settings/unavailability-blocks/${id}`);
+  },
+
+  // Logo operations
+  async uploadLogo(file: File): Promise<UserSettings> {
+    const response = await logoService.uploadLogo(file);
+    return response.data;
+  },
+
+  async deleteLogo(): Promise<UserSettings> {
+    const response = await logoService.deleteLogo();
+    return response.data;
   },
 };
