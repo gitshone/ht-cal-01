@@ -1,17 +1,13 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
+import { useAppSelector } from '../hooks/redux';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading, initializeAuth } = useAuthStore();
-
-  useEffect(() => {
-    initializeAuth();
-  }, [initializeAuth]);
+  const { isAuthenticated, isLoading } = useAppSelector(state => state.auth);
 
   if (isLoading) {
     return (

@@ -13,9 +13,8 @@ const redisConfig = {
 export const redis = new Redis(redisConfig);
 
 // Handle Redis connection events
-redis.on('error', _error => {
-  // Redis connection errors are handled by the application's error handling
-  // Logging is done through the winston logger in production
+redis.on('error', error => {
+  console.error('Redis connection error:', error);
 });
 
 export default redis;

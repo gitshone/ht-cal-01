@@ -15,6 +15,8 @@ model User {
   email     String   @unique
   firstName String   @map("first_name")
   lastName  String   @map("last_name")
+  handle    String?  @unique // Unique handle for public booking URLs (e.g., youtube.com/handle)
+  handleUpdatedAt DateTime? @map("handle_updated_at") // Track when handle was last changed
 
   // Google OAuth2 tokens for calendar access
   googleOauthTokens Json? @map("google_oauth_tokens")
@@ -26,6 +28,8 @@ model User {
   // Relations
   events Event[]
   blacklistedTokens TokenBlacklist[]
+  settings UserSettings?
+  unavailabilityBlocks UnavailabilityBlock[]
 
   @@map("users")
 }
@@ -75,4 +79,48 @@ model TokenBlacklist {
   @@map("token_blacklist")
   @@index([userId])
   @@index([expiresAt])
+}
+
+model UserSettings {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  
+  // Availability settings
+  defaultWorkingHours Json? @map("default_working_hours") // { monday: { start: "09:00", end: "17:00" }, ... }
+  timezone           String @default("UTC")
+  
+  // Invite customization
+  inviteTitle        String? @map("invite_title")
+  inviteDescription  String? @map("invite_description")
+  inviteLogoUrl      String? @map("invite_logo_url")
+  availableDurations Int[]   @default([15, 30, 60]) // Available meeting durations in minutes
+  acceptsNewMeetings Boolean @default(true) @map("accepts_new_meetings") // Whether user accepts new meeting requests
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+model UnavailabilityBlock {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  title     String   // e.g., "Lunch Break", "Personal Time"
+  startTime String   @map("start_time") // "12:00"
+  endTime   String   @map("end_time")   // "13:00"
+  days      String[] // ["monday", "tuesday", ...] or ["monday"] for specific days
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("unavailability_blocks")
+  @@index([userId])
 }

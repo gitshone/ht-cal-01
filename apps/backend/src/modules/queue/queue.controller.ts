@@ -1,11 +1,14 @@
 import { Request, Response } from 'express';
 import { BaseController } from '../../core/base.controller';
-import { queueService } from './queue.service';
+import { QueueService } from './queue.service';
 
 export class QueueController extends BaseController {
+  constructor(private queueService: QueueService) {
+    super();
+  }
   async getJobStatus(req: Request, res: Response) {
     const validatedParams = req.params as Record<string, string>;
-    const job = await queueService.getJob(validatedParams.jobId);
+    const job = await this.queueService.getJob(validatedParams.jobId);
 
     if (!job) {
       this.sendError(res, 'Job not found', 404);
@@ -19,7 +22,7 @@ export class QueueController extends BaseController {
     const userId = this.getUserId(req);
     const validatedData = req.body;
 
-    const jobId = await queueService.addJob(validatedData.type, {
+    const jobId = await this.queueService.addJob(validatedData.type, {
       ...validatedData.data,
       userId,
     });
@@ -39,7 +42,7 @@ export class QueueController extends BaseController {
     const userId = this.getUserId(req);
     const validatedData = req.body;
 
-    const jobId = await queueService.addJob('connect_calendar', {
+    const jobId = await this.queueService.addJob('connect_calendar', {
       userId,
       googleCode: validatedData.googleCode,
     });
@@ -56,7 +59,7 @@ export class QueueController extends BaseController {
   }
 
   async getQueueStats(req: Request, res: Response) {
-    const stats = await queueService.getQueueStats();
+    const stats = await this.queueService.getQueueStats();
     this.sendSuccess(res, stats, 'Queue statistics retrieved');
   }
 
@@ -64,7 +67,7 @@ export class QueueController extends BaseController {
     const validatedParams = req.params as Record<string, string>;
     const queueName = validatedParams.queueName;
 
-    await queueService.pauseQueue(queueName);
+    await this.queueService.pauseQueue(queueName);
     this.sendSuccess(res, null, `Queue ${queueName} paused`);
   }
 
@@ -72,9 +75,7 @@ export class QueueController extends BaseController {
     const validatedParams = req.params as Record<string, string>;
     const queueName = validatedParams.queueName;
 
-    await queueService.resumeQueue(queueName);
+    await this.queueService.resumeQueue(queueName);
     this.sendSuccess(res, null, `Queue ${queueName} resumed`);
   }
 }
-
-export const queueController = new QueueController();

@@ -14,11 +14,8 @@ export interface JobResult {
 }
 
 export class BullQueueService extends BaseService {
-  private queueManager: QueueManager;
-
-  constructor() {
+  constructor(private queueManager: QueueManager) {
     super();
-    this.queueManager = new QueueManager();
   }
 
   async addJob(type: string, data: JobData): Promise<string> {
@@ -49,5 +46,3 @@ export class BullQueueService extends BaseService {
     return this.queueManager.close();
   }
 }
-
-export const bullQueueService = new BullQueueService();

@@ -37,5 +37,3 @@ export class QueueValidator extends BaseValidator {
     return this.queueNameSchema;
   }
 }
-
-export const queueValidator = new QueueValidator();

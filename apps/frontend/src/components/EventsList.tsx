@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { eventService, calendarService } from '../lib/api';
+import { calendarService } from '../lib/api';
 import { googleOAuthService } from '../lib/googleOAuth';
 import { webSocketService } from '../lib/websocket.service';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import { useCalendarConnection } from '../hooks/useCalendarConnection';
 import {
   EventFilterParams,
-  GroupedEvents,
-  EventListResponse,
   CalendarErrorCode,
   CreateEventDto,
   Event as CalendarEvent,
@@ -15,14 +13,15 @@ import {
 import EventCard from './EventCard';
 import ConfirmationModal from './modals/ConfirmationModal';
 import RefreshConfirmationModal from './modals/RefreshConfirmationModal';
-import { useToastStore } from '../stores/toastStore';
+import { useAppDispatch, useAppSelector } from '../hooks/redux';
+import { showSuccess, showError } from '../store/slices/toastSlice';
 import CreateEventModal from './modals/CreateEventModal';
 import UpdateEventModal from './modals/UpdateEventModal';
 import SyncStatusIndicator from './indicators/SyncStatusIndicator';
 import CalendarConnectionIndicator from './indicators/CalendarConnectionIndicator';
-import { useAuthStore } from '../stores/authStore';
-import { useViewTypeStore } from '../stores/viewTypeStore';
 import CalendarView from './CalendarView';
+import { useEvents, useCreateEvent } from '../hooks/queries/eventQueries';
+import { setViewType } from '../store/slices/viewTypeSlice';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -31,11 +30,6 @@ dayjs.extend(weekOfYear);
 dayjs.extend(isoWeek);
 
 const EventsList: React.FC = () => {
-  const [groupedEvents, setGroupedEvents] = useState<GroupedEvents>({});
-  const [isLoading, setIsLoading] = useState(false);
-
-  const [error, setError] = useState<string | null>(null);
-  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [showDisconnectModal, setShowDisconnectModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -47,33 +41,45 @@ const EventsList: React.FC = () => {
   const [isCalendarConnected, setIsCalendarConnected] = useState(false);
   const [dateRange, setDateRange] = useState<'1' | '7' | '30'>('7');
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [groupBy, setGroupBy] = useState<'day' | 'week'>('day');
+  const dispatch = useAppDispatch();
+  const { user, isAuthenticated } = useAppSelector(state => state.auth);
+  const { viewType } = useAppSelector(state => state.viewType);
 
-  // Pagination state
-  const [pagination, setPagination] = useState({
-    hasNextPage: false,
-    nextCursor: undefined as string | undefined,
-    hasPreviousPage: false,
-    previousCursor: undefined as string | undefined,
-  });
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const { showSuccess, showError } = useToastStore();
   const { syncStatus, startSync, resetSyncStatus } = useSyncStatus();
   const { connectionStatus, startConnection, resetConnectionStatus } =
     useCalendarConnection();
-  const { user, refreshUserData } = useAuthStore();
-  const { viewType, setViewType } = useViewTypeStore();
+
+  // React Query hooks
+  const actualGroupBy = dateRange === '30' ? 'week' : 'day';
+  const eventParams: EventFilterParams = {
+    dateRange,
+    groupBy: actualGroupBy,
+    limit: 10,
+  };
+
+  const {
+    data: eventsData,
+    isLoading: eventsLoading,
+    error: eventsError,
+    refetch: refetchEvents,
+  } = useEvents(eventParams);
+
+  const createEventMutation = useCreateEvent();
+  const groupedEvents = eventsData?.groupedEvents || {};
+  const isLoading = eventsLoading;
+  const error = eventsError?.message || null;
+  const errorCode = (eventsError as any)?.response?.data?.errorCode || null;
 
   // Initialize WebSocket connection
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && isAuthenticated) {
       webSocketService.connect(user.id);
     }
 
     return () => {
       webSocketService.disconnect();
     };
-  }, [user?.id]);
+  }, [user?.id, isAuthenticated]);
 
   const checkConnectionStatus = useCallback(async () => {
     if (!user?.id) {
@@ -83,140 +89,30 @@ const EventsList: React.FC = () => {
     try {
       const status = await calendarService.getConnectionStatus();
       setIsCalendarConnected(status.connected);
-    } catch (_error) {
+    } catch (error) {
+      console.error('Failed to check calendar connection:', error);
       setIsCalendarConnected(false);
     }
   }, [user?.id]);
 
-  const fetchEvents = useCallback(
-    async (cursor?: string, append = false) => {
-      if (!user?.id) {
-        return;
-      }
-
-      if (append) {
-        setIsLoadingMore(true);
-      } else {
-        setIsLoading(true);
-        setError(null);
-        setErrorCode(null);
-      }
-
-      try {
-        const actualGroupBy = dateRange === '30' ? 'week' : 'day';
-        setGroupBy(actualGroupBy);
-
-        const params: EventFilterParams & { limit?: number; cursor?: string } =
-          {
-            dateRange,
-            groupBy: actualGroupBy,
-            limit: 10,
-            ...(cursor && { cursor }),
-          };
-
-        const response = (await eventService.getEvents(
-          params
-        )) as EventListResponse;
-
-        if (append) {
-          setGroupedEvents(prev => {
-            const merged = { ...prev };
-            if (response.groupedEvents) {
-              Object.keys(response.groupedEvents).forEach(key => {
-                if (merged[key] && response.groupedEvents) {
-                  merged[key] = [
-                    ...merged[key],
-                    ...response.groupedEvents[key],
-                  ];
-                } else if (response.groupedEvents) {
-                  merged[key] = response.groupedEvents[key];
-                }
-              });
-            }
-            return merged;
-          });
-        } else {
-          setGroupedEvents(response.groupedEvents || {});
-        }
-
-        // Update pagination state
-        const responseWithPagination = response as EventListResponse & {
-          hasNextPage?: boolean;
-          nextCursor?: string;
-          hasPreviousPage?: boolean;
-          previousCursor?: string;
-        };
-        setPagination({
-          hasNextPage: responseWithPagination.hasNextPage || false,
-          nextCursor: responseWithPagination.nextCursor,
-          hasPreviousPage: responseWithPagination.hasPreviousPage || false,
-          previousCursor: responseWithPagination.previousCursor,
-        });
-
-        setIsCalendarConnected(true);
-      } catch (err: unknown) {
-        const errorData = err as {
-          response?: { data?: { error?: string; errorCode?: string } };
-          errorCode?: string;
-          message?: string;
-          status?: number;
-        };
-
-        const errorMessage =
-          errorData?.response?.data?.error ||
-          errorData?.message ||
-          'Failed to fetch calendar events. Please try again.';
-        const errorCode =
-          errorData?.response?.data?.errorCode ||
-          errorData?.errorCode ||
-          CalendarErrorCode.UNKNOWN_ERROR;
-
-        setError(errorMessage);
-        setErrorCode(errorCode);
-
-        if (errorCode === CalendarErrorCode.NO_GOOGLE_TOKENS) {
-          setIsCalendarConnected(false);
-        }
-      } finally {
-        if (append) {
-          setIsLoadingMore(false);
-        } else {
-          setIsLoading(false);
-        }
-      }
-    },
-    [dateRange, user?.id]
-  );
-
-  const loadMoreEvents = useCallback(async () => {
-    if (pagination.hasNextPage && pagination.nextCursor && !isLoadingMore) {
-      await fetchEvents(pagination.nextCursor, true);
-    }
-  }, [
-    pagination.hasNextPage,
-    pagination.nextCursor,
-    isLoadingMore,
-    fetchEvents,
-  ]);
-
   useEffect(() => {
     if (syncStatus.status === 'completed') {
-      fetchEvents();
+      refetchEvents();
       setTimeout(() => {
         resetSyncStatus();
       }, 5000);
     }
-  }, [syncStatus.status, fetchEvents, resetSyncStatus]);
+  }, [syncStatus.status, refetchEvents, resetSyncStatus]);
 
   useEffect(() => {
     if (connectionStatus.status === 'completed') {
       setIsCalendarConnected(true);
-      fetchEvents();
+      refetchEvents();
       setTimeout(() => {
         resetConnectionStatus();
       }, 5000);
     }
-  }, [connectionStatus.status, fetchEvents, resetConnectionStatus]);
+  }, [connectionStatus.status, refetchEvents, resetConnectionStatus]);
 
   const handleRefreshClick = () => {
     if (syncStatus.isSyncing) {
@@ -232,16 +128,19 @@ const EventsList: React.FC = () => {
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to start sync';
-      showError('Sync Failed', errorMessage);
+      dispatch(showError({ title: 'Sync Failed', message: errorMessage }));
     }
   };
 
   const handleCreateEvent = async (eventData: CreateEventDto) => {
-    await eventService.createEvent(eventData);
+    await createEventMutation.mutateAsync(eventData);
     setShowCreateModal(false);
-    showSuccess('Event Created', 'Event created successfully');
-    await fetchEvents();
-    await refreshUserData();
+    dispatch(
+      showSuccess({
+        title: 'Event Created',
+        message: 'Event created successfully',
+      })
+    );
   };
 
   const handleEventClick = (event: CalendarEvent) => {
@@ -252,38 +151,48 @@ const EventsList: React.FC = () => {
   const handleEventUpdated = async (updatedEvent: CalendarEvent) => {
     setShowUpdateModal(false);
     setSelectedEvent(null);
-    showSuccess('Event Updated', 'Event updated successfully');
-    await fetchEvents();
+    dispatch(
+      showSuccess({
+        title: 'Event Updated',
+        message: 'Event updated successfully',
+      })
+    );
   };
 
   const handleEventDeleted = async () => {
     setShowUpdateModal(false);
     setSelectedEvent(null);
-    showSuccess('Event Deleted', 'Event deleted successfully');
-    await fetchEvents();
-    await refreshUserData();
+    dispatch(
+      showSuccess({
+        title: 'Event Deleted',
+        message: 'Event deleted successfully',
+      })
+    );
   };
 
   const handleDisconnectCalendar = async () => {
     setIsDisconnecting(true);
     try {
       await calendarService.disconnectCalendar();
-      showSuccess(
-        'Calendar Disconnected',
-        'Calendar disconnected successfully'
+      dispatch(
+        showSuccess({
+          title: 'Calendar Disconnected',
+          message: 'Calendar disconnected successfully',
+        })
       );
       setShowDisconnectModal(false);
-      setGroupedEvents({});
       setIsCalendarConnected(false);
 
-      fetchEvents();
+      refetchEvents();
     } catch (err: unknown) {
       const errorData = (
         err as { response?: { data?: { error?: string; errorCode?: string } } }
       )?.response?.data;
       const errorMessage =
         errorData?.error || 'Failed to disconnect calendar. Please try again.';
-      showError('Disconnect Failed', errorMessage);
+      dispatch(
+        showError({ title: 'Disconnect Failed', message: errorMessage })
+      );
     } finally {
       setIsDisconnecting(false);
     }
@@ -300,7 +209,9 @@ const EventsList: React.FC = () => {
       )?.response?.data;
       const errorMessage =
         errorData?.error || 'Failed to connect calendar. Please try again.';
-      showError('Connection Failed', errorMessage);
+      dispatch(
+        showError({ title: 'Connection Failed', message: errorMessage })
+      );
     }
   };
 
@@ -315,7 +226,9 @@ const EventsList: React.FC = () => {
       )?.response?.data;
       const errorMessage =
         errorData?.error || 'Failed to re-authenticate. Please try again.';
-      showError('Authentication Failed', errorMessage);
+      dispatch(
+        showError({ title: 'Authentication Failed', message: errorMessage })
+      );
     }
   };
 
@@ -327,21 +240,24 @@ const EventsList: React.FC = () => {
   }, [isInitialLoad]);
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && isAuthenticated) {
       checkConnectionStatus();
-      fetchEvents();
+      refetchEvents();
     }
-  }, [checkConnectionStatus, fetchEvents, user?.id, dateRange]);
+  }, [
+    checkConnectionStatus,
+    refetchEvents,
+    user?.id,
+    isAuthenticated,
+    dateRange,
+  ]);
 
-  // Reset pagination when date range changes
+  // Refetch events when authentication state changes
   useEffect(() => {
-    setPagination({
-      hasNextPage: false,
-      nextCursor: undefined,
-      hasPreviousPage: false,
-      previousCursor: undefined,
-    });
-  }, [dateRange]);
+    if (isAuthenticated && user?.id) {
+      refetchEvents();
+    }
+  }, [isAuthenticated, user?.id, refetchEvents]);
 
   if (error) {
     const isCalendarNotConnected =
@@ -402,7 +318,7 @@ const EventsList: React.FC = () => {
                 )}
                 {(isQuotaExceeded || isAuthIssue || isPermissionIssue) && (
                   <button
-                    onClick={() => fetchEvents()}
+                    onClick={() => refetchEvents()}
                     className="bg-red-50 px-2 py-1.5 rounded-md text-sm font-medium text-red-800 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-red-50 focus:ring-red-600"
                   >
                     Try Again
@@ -448,7 +364,12 @@ const EventsList: React.FC = () => {
   const hasEventsButNoneInRange =
     user?.hasEvents === true && Object.keys(groupedEvents).length === 0;
 
-  if (shouldShowEmptyState) {
+  const hasEventsData = Object.keys(groupedEvents).length > 0;
+
+  // If we have events data, always show it regardless of hasEvents property
+  if (hasEventsData) {
+    // Skip empty state and show events
+  } else if (shouldShowEmptyState) {
     return (
       <>
         <SyncStatusIndicator
@@ -708,7 +629,7 @@ const EventsList: React.FC = () => {
                 <select
                   value={viewType}
                   onChange={e =>
-                    setViewType(e.target.value as 'list' | 'calendar')
+                    dispatch(setViewType(e.target.value as 'list' | 'calendar'))
                   }
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                 >
@@ -802,7 +723,7 @@ const EventsList: React.FC = () => {
           <CalendarView
             onCreateEvent={handleCreateEvent}
             onEventClick={handleEventClick}
-            groupBy={groupBy}
+            groupBy={actualGroupBy}
           />
         ) : (
           /* Events grouped by day or week */
@@ -817,7 +738,7 @@ const EventsList: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                          {groupBy === 'week'
+                          {actualGroupBy === 'week'
                             ? formatWeek(dateKey)
                             : formatDate(dateKey)}
                         </h3>
@@ -827,7 +748,7 @@ const EventsList: React.FC = () => {
                         </p>
                       </div>
                       <div className="flex items-center">
-                        {groupBy === 'week' ? (
+                        {actualGroupBy === 'week' ? (
                           <svg
                             className="h-5 w-5 text-blue-500"
                             fill="none"
@@ -907,41 +828,6 @@ const EventsList: React.FC = () => {
                 </div>
               </div>
             ) : null}
-          </div>
-        )}
-
-        {/* Load More Button */}
-        {pagination.hasNextPage && (
-          <div className="flex justify-center py-6">
-            <button
-              onClick={loadMoreEvents}
-              disabled={isLoadingMore}
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoadingMore ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                  Loading more events...
-                </>
-              ) : (
-                <>
-                  <svg
-                    className="w-5 h-5 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                    />
-                  </svg>
-                  Load More Events
-                </>
-              )}
-            </button>
           </div>
         )}
 

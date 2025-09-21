@@ -140,8 +140,12 @@ const UpdateEventModal: React.FC<UpdateEventModalProps> = ({
       await eventService.deleteEvent(event.id);
       onClose(); // Close modal after successful deletion
       onEventDeleted?.(); // Notify parent component
-    } catch (_error: any) {
-      setFieldErrors({ general: 'Failed to delete event. Please try again.' });
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete event. Please try again.';
+      setFieldErrors({ general: errorMessage });
     } finally {
       setIsSubmitting(false);
     }

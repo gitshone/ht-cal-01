@@ -14,5 +14,3 @@ export class CalendarValidator extends BaseValidator {
     return this.connectCalendarSchema;
   }
 }
-
-export const calendarValidator = new CalendarValidator();

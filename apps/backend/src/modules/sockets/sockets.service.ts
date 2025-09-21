@@ -147,5 +147,3 @@ export class SocketsService extends BaseService {
     });
   }
 }
-
-export const webSocketService = new SocketsService();

@@ -1,7 +1,11 @@
 import React from 'react';
-import { Toast as ToastType } from '../../stores/toastStore';
+import { Toast as ToastType } from '../../store/slices/toastSlice';
 
-const Toast: React.FC<ToastType> = ({ id, type, title, message, onClose }) => {
+interface ToastProps extends ToastType {
+  onClose: (id: string) => void;
+}
+
+const Toast: React.FC<ToastProps> = ({ id, type, title, message, onClose }) => {
   const getToastStyles = () => {
     switch (type) {
       case 'success':

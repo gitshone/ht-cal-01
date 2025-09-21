@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { BaseController } from '../../core/base.controller';
-import { prisma } from '../../lib/prisma';
-import { cacheService } from '../../lib/cache.service';
+import { prisma } from '../../core/lib/prisma';
+import { cacheService } from '../../core/lib/cache.service';
 
 export class HealthController extends BaseController {
   async healthCheck(req: Request, res: Response) {
@@ -28,10 +28,8 @@ export class HealthController extends BaseController {
     try {
       const deletedCount = await cacheService.clearAllCache();
       this.sendSuccess(res, { deletedCount }, 'Cache cleared successfully');
-    } catch (_error) {
+    } catch (error) {
       this.sendError(res, 'Failed to clear cache', 500);
     }
   }
 }
-
-export const healthController = new HealthController();

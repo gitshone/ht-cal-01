@@ -1,6 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
-import { authService } from '../modules/auth';
+import { AuthService } from '../modules/auth/auth.service';
+import { AuthRepository } from '../modules/auth/auth.repository';
+import { TokenBlacklistRepository } from '../modules/auth/token-blacklist.repository';
+import { EventsRepository } from '../modules/events/events.repository';
 import { JwtPayload, ApiResponse } from '@ht-cal-01/shared-types';
+
+// Create singleton instance for middleware
+const authRepository = new AuthRepository();
+const tokenBlacklistRepository = new TokenBlacklistRepository();
+const eventsRepository = new EventsRepository();
+const authService = new AuthService(
+  authRepository,
+  tokenBlacklistRepository,
+  eventsRepository
+);
 
 // Extend Express Request type to include user
 declare module 'express-serve-static-core' {

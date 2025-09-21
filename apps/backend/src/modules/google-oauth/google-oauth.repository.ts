@@ -54,5 +54,3 @@ export class GoogleOAuthRepository extends BaseRepository {
     );
   }
 }
-
-export const googleOAuthRepository = new GoogleOAuthRepository();

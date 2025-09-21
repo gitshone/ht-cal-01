@@ -1,14 +1,15 @@
 import { BaseService } from '../../core/base.service';
-import { authRepository } from './auth.repository';
-import { tokenBlacklistRepository } from './token-blacklist.repository';
-import { eventsRepository } from '../events/events.repository';
+import { AuthRepository } from './auth.repository';
+import { TokenBlacklistRepository } from './token-blacklist.repository';
+import { EventsRepository } from '../events/events.repository';
 import { User } from '@ht-cal-01/shared-types';
 import {
   InvalidInputError,
   UserNotFoundError,
   FirebaseAuthFailedError,
-} from '../../errors/http.errors';
-import { auth } from '../../lib/firebase';
+  ConflictError,
+} from '../../core/errors/http.errors';
+import { auth } from '../../core/lib/firebase';
 import jwt from 'jsonwebtoken';
 import dayjs from 'dayjs';
 
@@ -16,6 +17,14 @@ export class AuthService extends BaseService {
   private readonly JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret';
   private readonly JWT_REFRESH_SECRET =
     process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret';
+
+  constructor(
+    private authRepository: AuthRepository,
+    private tokenBlacklistRepository: TokenBlacklistRepository,
+    private eventsRepository: EventsRepository
+  ) {
+    super();
+  }
 
   async loginWithFirebase(
     firebaseToken: string
@@ -30,13 +39,24 @@ export class AuthService extends BaseService {
         );
       }
 
-      let user = await authRepository.findByEmail(decodedToken.email);
+      let user = await this.authRepository.findByEmail(decodedToken.email);
 
       if (!user) {
-        user = await authRepository.create({
+        // Generate unique handle for new user
+        const generatedHandle = await this.authRepository.generateUniqueHandle(
+          decodedToken.email
+        );
+
+        this.logInfo('Generated unique handle for new user', {
+          email: decodedToken.email,
+          generatedHandle,
+        });
+
+        user = await this.authRepository.create({
           email: decodedToken.email,
           firstName: decodedToken.name?.split(' ')[0] || 'User',
           lastName: decodedToken.name?.split(' ').slice(1).join(' ') || '',
+          handle: generatedHandle,
         });
       }
 
@@ -60,7 +80,7 @@ export class AuthService extends BaseService {
 
   async getCurrentUser(userId: string): Promise<User & { hasEvents: boolean }> {
     try {
-      const user = await authRepository.findById(userId);
+      const user = await this.authRepository.findById(userId);
       if (!user) {
         throw new UserNotFoundError('User not found');
       }
@@ -80,7 +100,7 @@ export class AuthService extends BaseService {
       const now = dayjs().startOf('day');
       const thirtyDaysFromNow = now.add(30, 'days').endOf('day');
 
-      const eventCount = await eventsRepository.countEventsInRange(
+      const eventCount = await this.eventsRepository.countEventsInRange(
         userId,
         now.toDate(),
         thirtyDaysFromNow.toDate()
@@ -101,7 +121,7 @@ export class AuthService extends BaseService {
         userId: string;
         type: string;
       };
-      const user = await authRepository.findById(decoded.userId);
+      const user = await this.authRepository.findById(decoded.userId);
 
       if (!user) {
         throw new InvalidInputError('Invalid refresh token');
@@ -120,7 +140,7 @@ export class AuthService extends BaseService {
 
   async updateGoogleTokens(userId: string, tokens: any): Promise<void> {
     try {
-      await authRepository.updateGoogleTokens(userId, tokens);
+      await this.authRepository.updateGoogleTokens(userId, tokens);
       this.logInfo('Google tokens updated', { userId });
     } catch (error) {
       this.handleServiceError(error as Error, 'updateGoogleTokens', { userId });
@@ -129,7 +149,7 @@ export class AuthService extends BaseService {
 
   async getUserById(userId: string): Promise<User | null> {
     try {
-      const user = await authRepository.findById(userId);
+      const user = await this.authRepository.findById(userId);
       return user;
     } catch (error) {
       this.handleServiceError(error as Error, 'getUserById', { userId });
@@ -166,7 +186,7 @@ export class AuthService extends BaseService {
       const decoded = jwt.decode(token) as { exp: number };
       const expiresAt = new Date(decoded.exp * 1000);
 
-      await tokenBlacklistRepository.addToken({
+      await this.tokenBlacklistRepository.addToken({
         token,
         userId,
         type,
@@ -184,7 +204,7 @@ export class AuthService extends BaseService {
 
   async isTokenBlacklisted(token: string): Promise<boolean> {
     try {
-      return await tokenBlacklistRepository.isTokenBlacklisted(token);
+      return await this.tokenBlacklistRepository.isTokenBlacklisted(token);
     } catch (error) {
       this.handleServiceError(error as Error, 'isTokenBlacklisted');
     }
@@ -206,6 +226,53 @@ export class AuthService extends BaseService {
       this.logInfo('User logged out successfully', { userId });
     } catch (error) {
       this.handleServiceError(error as Error, 'logout', { userId });
+    }
+  }
+
+  async updateHandle(userId: string, handle: string): Promise<User> {
+    try {
+      // Check if handle is already taken
+      const existingUser = await this.authRepository.findByHandle(handle);
+      if (existingUser && existingUser.id !== userId) {
+        throw new ConflictError('Handle is already taken');
+      }
+
+      // Get current user to check handle update frequency
+      const currentUser = await this.authRepository.findById(userId);
+      if (!currentUser) {
+        throw new UserNotFoundError('User not found');
+      }
+
+      // Check if handle was updated within the last month
+      if (currentUser.handleUpdatedAt) {
+        const lastUpdate = dayjs(currentUser.handleUpdatedAt);
+        const oneMonthAgo = dayjs().subtract(1, 'month');
+
+        if (lastUpdate.isAfter(oneMonthAgo)) {
+          const daysLeft = lastUpdate.add(1, 'month').diff(dayjs(), 'day');
+          throw new InvalidInputError(
+            `Handle can only be changed once per month. You can change it again in ${daysLeft} days.`
+          );
+        }
+      }
+
+      const updatedUser = await this.authRepository.updateHandle(
+        userId,
+        handle
+      );
+
+      this.logInfo('User handle updated successfully', {
+        userId,
+        handle,
+        previousHandle: currentUser.handle,
+      });
+
+      return updatedUser;
+    } catch (error) {
+      this.handleServiceError(error as Error, 'updateHandle', {
+        userId,
+        handle,
+      });
     }
   }
 
@@ -232,5 +299,3 @@ export class AuthService extends BaseService {
     );
   }
 }
-
-export const authService = new AuthService();

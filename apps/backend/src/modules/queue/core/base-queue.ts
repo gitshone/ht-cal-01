@@ -1,6 +1,6 @@
 import Queue from 'bull';
 import { BaseService } from '../../../core/base.service';
-import { webSocketService } from '../../sockets/sockets.service';
+import { SocketsService } from '../../sockets/sockets.service';
 
 export interface JobData {
   userId?: string;
@@ -20,6 +20,7 @@ export abstract class BaseQueue extends BaseService {
   constructor(
     queueName: string,
     redisConfig: Queue.QueueOptions['redis'],
+    private socketsService: SocketsService,
     customJobOptions?: Queue.QueueOptions['defaultJobOptions']
   ) {
     super();
@@ -166,12 +167,18 @@ export abstract class BaseQueue extends BaseService {
   protected abstract processJob(data: JobData): Promise<JobResult>;
 
   // Optional hooks for subclasses to override
-  protected onJobStarted(_job: Queue.Job): void {
-    // Default implementation - can be overridden by subclasses
+  protected onJobStarted(job: Queue.Job): void {
+    this.logInfo(`Job started: ${job.id}`, {
+      jobId: job.id,
+      jobName: this.queueName,
+    });
   }
 
-  protected onJobCompleted(_job: Queue.Job): void {
-    // Default implementation - can be overridden by subclasses
+  protected onJobCompleted(job: Queue.Job): void {
+    this.logInfo(`Job completed: ${job.id}`, {
+      jobId: job.id,
+      jobName: this.queueName,
+    });
   }
 
   protected onJobFailed(_job: Queue.Job, _error: Error): void {
@@ -186,7 +193,7 @@ export abstract class BaseQueue extends BaseService {
     message?: string
   ): void {
     if (userId) {
-      webSocketService.sendSyncUpdate({
+      this.socketsService.sendSyncUpdate({
         type: type as any,
         userId,
         jobId,

@@ -1,7 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { eventService } from '../lib/api';
-import { useAuthStore } from '../stores/authStore';
-import { useToastStore } from '../stores/toastStore';
+import React, { useState } from 'react';
+import { useEvents } from '../hooks/queries/eventQueries';
 import {
   Event as CalendarEvent,
   EventFilterParams,
@@ -29,54 +27,30 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   onEventClick,
   groupBy = 'day',
 }) => {
-  const [events, setEvents] = useState<CalendarEventWithDisplay[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const { user, refreshUserData } = useAuthStore();
-  const { showError } = useToastStore();
 
-  const fetchEvents = useCallback(async () => {
-    if (!user?.id) return;
+  // React Query hook for events
+  const params: EventFilterParams = {
+    dateRange: '30',
+    groupBy: groupBy as 'day' | 'week',
+    limit: 100,
+  };
 
-    setIsLoading(true);
-    setError(null);
+  const { data: eventsData, isLoading, error: eventsError } = useEvents(params);
 
-    try {
-      const params: EventFilterParams = {
-        dateRange: '30', // Calendar view always uses 30 days
-        groupBy: groupBy as 'day' | 'week',
-        limit: 100, // Keep higher limit for calendar view to show more events. todo: refactor whole pagination logic because of calendar view
-      };
+  const events: CalendarEventWithDisplay[] = React.useMemo(() => {
+    if (!eventsData?.groupedEvents) return [];
 
-      const response = await eventService.getEvents(params);
+    const allEvents: CalendarEvent[] = [];
+    Object.values(eventsData.groupedEvents).forEach(dayEvents => {
+      allEvents.push(...dayEvents);
+    });
 
-      const allEvents: CalendarEvent[] = [];
-      Object.values(response.groupedEvents).forEach(dayEvents => {
-        allEvents.push(...dayEvents);
-      });
+    return allEvents;
+  }, [eventsData?.groupedEvents]);
 
-      setEvents(allEvents);
-    } catch (err: unknown) {
-      const errorData = err as {
-        response?: { data?: { error?: string } };
-        message?: string;
-      };
-      const errorMessage =
-        errorData?.response?.data?.error ||
-        errorData?.message ||
-        'Failed to load events';
-      setError(errorMessage);
-      showError('Calendar Error', errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user?.id, showError, groupBy]);
-
-  useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
+  const error = eventsError?.message || null;
 
   const handleDateClick = (date: string) => {
     setSelectedDate(date);
@@ -87,8 +61,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     await onCreateEvent(eventData);
     setShowCreateModal(false);
     setSelectedDate(null);
-    await fetchEvents();
-    await refreshUserData();
   };
 
   const handleCloseModal = () => {

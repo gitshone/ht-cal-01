@@ -1,4 +1,4 @@
-import { prisma } from '../lib/prisma';
+import { prisma } from './lib/prisma';
 import logger from '../utils/winston-logger';
 
 export abstract class BaseRepository {

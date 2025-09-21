@@ -109,5 +109,3 @@ export class EventsValidator extends BaseValidator {
     return this.validateQuery(this.paginationSchema, query);
   }
 }
-
-export const eventsValidator = new EventsValidator();

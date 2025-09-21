@@ -1,9 +1,14 @@
 import { BaseQueue, JobData, JobResult } from '../core/base-queue';
-import { tokenBlacklistRepository } from '../../auth/token-blacklist.repository';
+import { TokenBlacklistRepository } from '../../auth/token-blacklist.repository';
+import { SocketsService } from '../../sockets/sockets.service';
 
 export class CleanupTokensQueue extends BaseQueue {
-  constructor(redisConfig: any) {
-    super('cleanup-tokens', redisConfig, {
+  constructor(
+    redisConfig: any,
+    socketsService: SocketsService,
+    private tokenBlacklistRepository: TokenBlacklistRepository
+  ) {
+    super('cleanup-tokens', redisConfig, socketsService, {
       removeOnComplete: 50,
       removeOnFail: 25,
       attempts: 2,
@@ -17,7 +22,7 @@ export class CleanupTokensQueue extends BaseQueue {
   protected async processJob(_data: JobData): Promise<JobResult> {
     try {
       const cleanedCount =
-        await tokenBlacklistRepository.cleanupExpiredTokens();
+        await this.tokenBlacklistRepository.cleanupExpiredTokens();
 
       this.logInfo('Cleanup blacklisted tokens job completed', {
         cleanedCount,

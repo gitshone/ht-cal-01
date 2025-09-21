@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { ApiResponse } from '@ht-cal-01/shared-types';
-import { AuthenticationRequiredError } from '../errors/http.errors';
+import { AuthenticationRequiredError } from './errors/http.errors';
 import { Exception } from '@tsed/exceptions';
 
 export abstract class BaseController {

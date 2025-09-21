@@ -4,9 +4,9 @@ import logger from '../utils/winston-logger';
 
 export const errorHandler = (
   error: Error,
-  _req: Request,
+  req: Request,
   res: Response,
-  _next: NextFunction
+  next: NextFunction
 ): void => {
   logger.error('Error caught by global handler:', error);
 

@@ -1,15 +1,21 @@
 import { BaseQueue, JobData, JobResult } from '../core/base-queue';
-import { googleOAuthService } from '../../google-oauth/google-oauth.service';
-import { eventsService } from '../../events/events.service';
 import { WEBSOCKET_EVENTS } from '@ht-cal-01/shared-types';
+import { GoogleOAuthService } from '../../google-oauth/google-oauth.service';
+import { EventsService } from '../../events/events.service';
+import { SocketsService } from '../../sockets/sockets.service';
 
 export interface CalendarJobData extends JobData {
   googleCode: string;
 }
 
 export class CalendarQueue extends BaseQueue {
-  constructor(redisConfig: any) {
-    super('connect-calendar', redisConfig);
+  constructor(
+    redisConfig: any,
+    socketsService: SocketsService,
+    private googleOAuthService: GoogleOAuthService,
+    private eventsService: EventsService
+  ) {
+    super('connect-calendar', redisConfig, socketsService);
   }
 
   protected async processJob(data: JobData): Promise<JobResult> {
@@ -22,12 +28,12 @@ export class CalendarQueue extends BaseQueue {
 
       const calendarData = data as CalendarJobData;
 
-      await googleOAuthService.exchangeCodeForTokens(
+      await this.googleOAuthService.exchangeCodeForTokens(
         calendarData.userId!,
         calendarData.googleCode
       );
 
-      const syncResult = await eventsService.syncEventsFromGoogle(
+      const syncResult = await this.eventsService.syncEventsFromGoogle(
         calendarData.userId!
       );
 

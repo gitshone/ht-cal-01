@@ -5,6 +5,7 @@ import {
   InternalServerError,
   Forbidden,
   TooManyRequests,
+  Conflict,
 } from '@tsed/exceptions';
 import { AuthErrorCode, CalendarErrorCode } from '@ht-cal-01/shared-types';
 
@@ -192,6 +193,17 @@ export class CalendarAccessDeniedError extends Forbidden {
       success: false,
       error: message,
       errorCode: CalendarErrorCode.CALENDAR_ACCESS_DENIED,
+    };
+  }
+}
+
+export class ConflictError extends Conflict {
+  constructor(message = 'Resource conflict') {
+    super(message);
+    this.body = {
+      success: false,
+      error: message,
+      errorCode: AuthErrorCode.INVALID_INPUT,
     };
   }
 }

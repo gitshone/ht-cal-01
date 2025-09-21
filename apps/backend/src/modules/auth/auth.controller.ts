@@ -1,12 +1,16 @@
 import { Request, Response } from 'express';
 import { BaseController } from '../../core/base.controller';
-import { authService } from './auth.service';
-import { authValidator } from './auth.validator';
+import { AuthService } from './auth.service';
+import { AuthValidator } from './auth.validator';
 
 export class AuthController extends BaseController {
+  constructor(private authService: AuthService) {
+    super();
+  }
   async loginWithFirebase(req: Request, res: Response) {
-    const validatedData = authValidator.validateFirebaseAuth(req.body);
-    const result = await authService.loginWithFirebase(
+    const validator = new AuthValidator();
+    const validatedData = validator.validateFirebaseAuth(req.body);
+    const result = await this.authService.loginWithFirebase(
       validatedData.firebaseToken
     );
 
@@ -36,7 +40,7 @@ export class AuthController extends BaseController {
       return;
     }
 
-    const result = await authService.refreshToken(refreshToken);
+    const result = await this.authService.refreshToken(refreshToken);
 
     res.cookie('refreshToken', result.refreshToken, {
       httpOnly: true,
@@ -57,7 +61,7 @@ export class AuthController extends BaseController {
 
   async getCurrentUser(req: Request, res: Response) {
     const userId = this.getUserId(req);
-    const user = await authService.getCurrentUser(userId);
+    const user = await this.authService.getCurrentUser(userId);
 
     this.sendSuccess(res, user, 'Current user retrieved');
   }
@@ -71,7 +75,7 @@ export class AuthController extends BaseController {
       : undefined;
     const refreshToken = req.cookies.refreshToken;
 
-    await authService.logout(userId, accessToken, refreshToken);
+    await this.authService.logout(userId, accessToken, refreshToken);
 
     res.clearCookie('refreshToken', {
       path: '/api/auth',
@@ -79,6 +83,17 @@ export class AuthController extends BaseController {
 
     this.sendSuccess(res, null, 'Logout successful');
   }
-}
 
-export const authController = new AuthController();
+  async updateHandle(req: Request, res: Response) {
+    const userId = this.getUserId(req);
+    const validator = new AuthValidator();
+    const validatedData = validator.validateUpdateHandle(req.body);
+
+    const updatedUser = await this.authService.updateHandle(
+      userId,
+      validatedData.handle
+    );
+
+    this.sendSuccess(res, updatedUser, 'Handle updated successfully');
+  }
+}

@@ -1,4 +1,4 @@
-import { BaseService } from '../core/base.service';
+import { BaseService } from '../../core/base.service';
 import { redis } from './redis';
 
 export interface CacheOptions {

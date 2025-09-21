@@ -1,8 +1,11 @@
 import { Request, Response } from 'express';
 import { BaseController } from '../../core/base.controller';
-import { calendarService } from './calendar.service';
+import { CalendarService } from './calendar.service';
 
 export class CalendarController extends BaseController {
+  constructor(private calendarService: CalendarService) {
+    super();
+  }
   async connectCalendar(req: Request, res: Response) {
     const userId = this.getUserId(req);
     const googleCode = req.headers['x-google-oauth-code'] as string;
@@ -16,7 +19,10 @@ export class CalendarController extends BaseController {
       return;
     }
 
-    const result = await calendarService.connectCalendar(userId, googleCode);
+    const result = await this.calendarService.connectCalendar(
+      userId,
+      googleCode
+    );
 
     this.sendSuccess(
       res,
@@ -28,7 +34,7 @@ export class CalendarController extends BaseController {
   async disconnectCalendar(req: Request, res: Response) {
     const userId = this.getUserId(req);
 
-    await calendarService.disconnectCalendar(userId);
+    await this.calendarService.disconnectCalendar(userId);
 
     this.sendSuccess(res, null, 'Google Calendar disconnected successfully');
   }
@@ -36,10 +42,8 @@ export class CalendarController extends BaseController {
   async getConnectionStatus(req: Request, res: Response) {
     const userId = this.getUserId(req);
 
-    const result = await calendarService.getConnectionStatus(userId);
+    const result = await this.calendarService.getConnectionStatus(userId);
 
     this.sendSuccess(res, result, 'Calendar connection status retrieved');
   }
 }
-
-export const calendarController = new CalendarController();

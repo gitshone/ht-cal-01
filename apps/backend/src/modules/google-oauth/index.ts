@@ -1,2 +1,2 @@
-export { googleOAuthService } from './google-oauth.service';
-export { googleOAuthRepository } from './google-oauth.repository';
+export { GoogleOAuthService } from './google-oauth.service';
+export { GoogleOAuthRepository } from './google-oauth.repository';

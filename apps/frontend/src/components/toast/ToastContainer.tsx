@@ -1,16 +1,33 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Toast from './Toast';
-import { Toast as ToastType } from '../../stores/toastStore';
+import { Toast as ToastType } from '../../store/slices/toastSlice';
+import { useAppDispatch } from '../../hooks/redux';
+import { removeToast } from '../../store/slices/toastSlice';
 
 interface ToastContainerProps {
   toasts: ToastType[];
-  onRemoveToast: (id: string) => void;
 }
 
-const ToastContainer: React.FC<ToastContainerProps> = ({
-  toasts,
-  onRemoveToast,
-}) => {
+const ToastContainer: React.FC<ToastContainerProps> = ({ toasts }) => {
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    const timers: NodeJS.Timeout[] = [];
+
+    toasts.forEach(toast => {
+      if (toast.duration && toast.duration > 0) {
+        const timer = setTimeout(() => {
+          dispatch(removeToast(toast.id));
+        }, toast.duration);
+        timers.push(timer);
+      }
+    });
+
+    return () => {
+      timers.forEach(timer => clearTimeout(timer));
+    };
+  }, [toasts, dispatch]);
+
   if (toasts.length === 0) return null;
 
   return (
@@ -20,7 +37,11 @@ const ToastContainer: React.FC<ToastContainerProps> = ({
     >
       <div className="w-full flex flex-col items-center space-y-4 sm:items-end">
         {toasts.map(toast => (
-          <Toast key={toast.id} {...toast} onClose={onRemoveToast} />
+          <Toast
+            key={toast.id}
+            {...toast}
+            onClose={(id: string) => dispatch(removeToast(id))}
+          />
         ))}
       </div>
     </div>

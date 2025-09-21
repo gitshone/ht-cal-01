@@ -72,5 +72,3 @@ export class TokenBlacklistRepository extends BaseRepository {
     return count;
   }
 }
-
-export const tokenBlacklistRepository = new TokenBlacklistRepository();

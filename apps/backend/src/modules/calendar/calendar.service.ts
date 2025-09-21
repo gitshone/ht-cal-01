@@ -1,16 +1,23 @@
 import { BaseService } from '../../core/base.service';
-import { calendarRepository } from './calendar.repository';
-import { queueService } from '../queue/queue.service';
-import { eventsService } from '../events/events.service';
+import { CalendarRepository } from './calendar.repository';
+import { QueueService } from '../queue/queue.service';
+import { EventsService } from '../events/events.service';
 import { EVENT_CONSTANTS } from '@ht-cal-01/shared-types';
 
 export class CalendarService extends BaseService {
+  constructor(
+    private calendarRepository: CalendarRepository,
+    private queueService: QueueService,
+    private eventsService: EventsService
+  ) {
+    super();
+  }
   async connectCalendar(
     userId: string,
     googleCode: string
   ): Promise<{ jobId: string }> {
     try {
-      const jobId = await queueService.addJob(
+      const jobId = await this.queueService.addJob(
         EVENT_CONSTANTS.JOB_TYPES.CONNECT_CALENDAR,
         {
           userId,
@@ -28,10 +35,10 @@ export class CalendarService extends BaseService {
   async disconnectCalendar(userId: string): Promise<void> {
     try {
       // Remove Google OAuth tokens from user
-      await calendarRepository.disconnectUser(userId);
+      await this.calendarRepository.disconnectUser(userId);
 
       // Clear all events for this user
-      await eventsService.clearUserEvents(userId);
+      await this.eventsService.clearUserEvents(userId);
 
       this.logInfo('Calendar disconnected successfully', { userId });
     } catch (error) {
@@ -41,7 +48,7 @@ export class CalendarService extends BaseService {
 
   async getConnectionStatus(userId: string): Promise<{ connected: boolean }> {
     try {
-      const user = await calendarRepository.getUserTokens(userId);
+      const user = await this.calendarRepository.getUserTokens(userId);
       const connected = !!user?.googleOauthTokens;
 
       this.logInfo('Calendar connection status retrieved', {
@@ -56,5 +63,3 @@ export class CalendarService extends BaseService {
     }
   }
 }
-
-export const calendarService = new CalendarService();

@@ -3,13 +3,22 @@ import { SyncEventsQueue } from '../queues/sync-events-queue';
 import { CalendarQueue } from '../queues/calendar-queue';
 import { CleanupTokensQueue } from '../queues/cleanup-tokens-queue';
 import { EVENT_CONSTANTS } from '@ht-cal-01/shared-types';
+import { GoogleOAuthService } from '../../google-oauth/google-oauth.service';
+import { EventsService } from '../../events/events.service';
+import { SocketsService } from '../../sockets/sockets.service';
+import { TokenBlacklistRepository } from '../../auth/token-blacklist.repository';
 
 export class QueueManager extends BaseService {
   private syncEventsQueue!: SyncEventsQueue;
   private calendarQueue!: CalendarQueue;
   private cleanupTokensQueue!: CleanupTokensQueue;
 
-  constructor() {
+  constructor(
+    private googleOAuthService: GoogleOAuthService,
+    private eventsService: EventsService,
+    private socketsService: SocketsService,
+    private tokenBlacklistRepository: TokenBlacklistRepository
+  ) {
     super();
     this.initializeQueues();
   }
@@ -22,9 +31,22 @@ export class QueueManager extends BaseService {
       db: Number(process.env.REDIS_DB) || 0,
     };
 
-    this.syncEventsQueue = new SyncEventsQueue(redisConfig);
-    this.calendarQueue = new CalendarQueue(redisConfig);
-    this.cleanupTokensQueue = new CleanupTokensQueue(redisConfig);
+    this.syncEventsQueue = new SyncEventsQueue(
+      redisConfig,
+      this.socketsService,
+      this.eventsService
+    );
+    this.calendarQueue = new CalendarQueue(
+      redisConfig,
+      this.socketsService,
+      this.googleOAuthService,
+      this.eventsService
+    );
+    this.cleanupTokensQueue = new CleanupTokensQueue(
+      redisConfig,
+      this.socketsService,
+      this.tokenBlacklistRepository
+    );
 
     this.logInfo('All queues initialized successfully');
   }

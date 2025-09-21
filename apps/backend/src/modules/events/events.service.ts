@@ -1,9 +1,9 @@
 import { google } from 'googleapis';
 import { BaseService } from '../../core/base.service';
-import { eventsRepository } from './events.repository';
-import { googleOAuthService } from '../google-oauth';
-import { prisma } from '../../lib/prisma';
-import { cacheService } from '../../lib/cache.service';
+import { EventsRepository } from './events.repository';
+import { GoogleOAuthService } from '../google-oauth/google-oauth.service';
+import { prisma } from '../../core/lib/prisma';
+import { cacheService } from '../../core/lib/cache.service';
 import {
   Event,
   CreateEventDto,
@@ -12,7 +12,10 @@ import {
   EventListResponse,
   GoogleCalendarEventData,
 } from '@ht-cal-01/shared-types';
-import { GoogleApiError, NoGoogleTokensError } from '../../errors/http.errors';
+import {
+  GoogleApiError,
+  NoGoogleTokensError,
+} from '../../core/errors/http.errors';
 import { EVENT_CONSTANTS } from '@ht-cal-01/shared-types';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -22,6 +25,12 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 export class EventsService extends BaseService {
+  constructor(
+    private eventsRepository: EventsRepository,
+    private googleOAuthService: GoogleOAuthService
+  ) {
+    super();
+  }
   async syncEventsFromGoogle(
     userId: string
   ): Promise<{ synced: number; created: number; updated: number }> {
@@ -29,7 +38,9 @@ export class EventsService extends BaseService {
     this.logInfo('Starting Google Calendar sync', { userId });
 
     try {
-      const oauth2Client = await googleOAuthService.getOAuth2Client(userId);
+      const oauth2Client = await this.googleOAuthService.getOAuth2Client(
+        userId
+      );
       const calendar = google.calendar({
         version: 'v3',
         auth: oauth2Client as any,
@@ -146,17 +157,17 @@ export class EventsService extends BaseService {
     userId: string,
     params: EventFilterParams = {}
   ): Promise<EventListResponse> {
-    const user = await eventsRepository.getUserGoogleTokens(userId);
+    const user = await this.eventsRepository.getUserGoogleTokens(userId);
     if (!user?.googleOauthTokens) {
       throw new NoGoogleTokensError();
     }
 
-    return await eventsRepository.findMany(userId, params);
+    return await this.eventsRepository.findMany(userId, params);
   }
 
   async createEvent(userId: string, eventData: CreateEventDto): Promise<Event> {
     try {
-      const user = await eventsRepository.getUserGoogleTokens(userId);
+      const user = await this.eventsRepository.getUserGoogleTokens(userId);
       if (!user?.googleOauthTokens) {
         throw new NoGoogleTokensError();
       }
@@ -166,7 +177,9 @@ export class EventsService extends BaseService {
       const userTimezone = dayjs.tz.guess();
       let googleEvent: any = null;
 
-      const oauth2Client = await googleOAuthService.getOAuth2Client(userId);
+      const oauth2Client = await this.googleOAuthService.getOAuth2Client(
+        userId
+      );
       const calendar = google.calendar({
         version: 'v3',
         auth: oauth2Client as any,
@@ -191,7 +204,7 @@ export class EventsService extends BaseService {
         },
       });
 
-      const event = await eventsRepository.create({
+      const event = await this.eventsRepository.create({
         userId,
         title: eventData.title,
         startDate,
@@ -226,17 +239,17 @@ export class EventsService extends BaseService {
     eventData: UpdateEventDto
   ): Promise<Event> {
     try {
-      const user = await eventsRepository.getUserGoogleTokens(userId);
+      const user = await this.eventsRepository.getUserGoogleTokens(userId);
       if (!user?.googleOauthTokens) {
         throw new NoGoogleTokensError();
       }
 
-      const event = await eventsRepository.findById(eventId, userId);
+      const event = await this.eventsRepository.findById(eventId, userId);
       if (!event) {
         throw new GoogleApiError('Event not found.');
       }
 
-      const updatedEvent = await eventsRepository.update(eventId, {
+      const updatedEvent = await this.eventsRepository.update(eventId, {
         ...eventData,
         startDate: eventData.startDate
           ? new Date(eventData.startDate)
@@ -246,7 +259,9 @@ export class EventsService extends BaseService {
 
       if (event.googleId) {
         try {
-          const oauth2Client = await googleOAuthService.getOAuth2Client(userId);
+          const oauth2Client = await this.googleOAuthService.getOAuth2Client(
+            userId
+          );
           const calendar = google.calendar({
             version: 'v3',
             auth: oauth2Client as any,
@@ -343,7 +358,7 @@ export class EventsService extends BaseService {
     this.logInfo('Attempting to delete event', { userId, eventId });
 
     await prisma.$transaction(async (tx: any) => {
-      const event = await eventsRepository.findById(eventId, userId);
+      const event = await this.eventsRepository.findById(eventId, userId);
       if (!event) {
         throw new Error('Event not found');
       }
@@ -351,7 +366,9 @@ export class EventsService extends BaseService {
       // Try to delete from Google Calendar first
       if (event.googleEventId) {
         try {
-          const oauth2Client = await googleOAuthService.getOAuth2Client(userId);
+          const oauth2Client = await this.googleOAuthService.getOAuth2Client(
+            userId
+          );
           const calendar = google.calendar({
             version: 'v3',
             auth: oauth2Client as any,
@@ -382,7 +399,7 @@ export class EventsService extends BaseService {
       }
 
       // Delete from database
-      await eventsRepository.delete(eventId, tx);
+      await this.eventsRepository.delete(eventId, tx);
     });
 
     // Invalidate cache after successful deletion
@@ -392,7 +409,7 @@ export class EventsService extends BaseService {
   }
 
   async clearUserEvents(userId: string): Promise<void> {
-    await eventsRepository.deleteMany(userId);
+    await this.eventsRepository.deleteMany(userId);
   }
 
   private getSyncDateRange() {
@@ -479,7 +496,7 @@ export class EventsService extends BaseService {
 
     // Get existing events for this batch
     const googleIds = validEvents.map(event => event.id);
-    const existingEvents = await eventsRepository.findManyByGoogleIds(
+    const existingEvents = await this.eventsRepository.findManyByGoogleIds(
       googleIds
     );
 
@@ -572,13 +589,15 @@ export class EventsService extends BaseService {
     );
 
     if (eventsToCreate.length > 0) {
-      const createResult = await eventsRepository.createMany(eventsToCreate);
+      const createResult = await this.eventsRepository.createMany(
+        eventsToCreate
+      );
       created = createResult.count;
       this.logInfo(`Created events: ${created}`, { userId, created });
     }
 
     if (eventsToUpdate.length > 0) {
-      await eventsRepository.updateMany(eventsToUpdate);
+      await this.eventsRepository.updateMany(eventsToUpdate);
       updated = eventsToUpdate.length;
       this.logInfo(`Updated events: ${updated}`, { userId, updated });
     }
@@ -596,5 +615,3 @@ export class EventsService extends BaseService {
     return result;
   }
 }
-
-export const eventsService = new EventsService();

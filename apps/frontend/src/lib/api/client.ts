@@ -23,17 +23,15 @@ export const clearTokens = () => {
   localStorage.removeItem('accessToken');
 };
 
-// Create axios instance
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_URL,
   timeout: API_TIMEOUT,
-  withCredentials: true, // Enable sending cookies
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request interceptor to add auth token
 apiClient.interceptors.request.use(
   config => {
     const { accessToken } = getTokens();
@@ -47,11 +45,23 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle token refresh
+// Response interceptor to handle token refresh and validation errors
 apiClient.interceptors.response.use(
   response => response,
   async error => {
     const originalRequest = error.config;
+
+    if (error.response?.status === 400 && error.response.data?.fieldErrors) {
+      const validationError = new Error(
+        error.response.data.error || 'Validation failed'
+      );
+      (validationError as any).response = error.response;
+      (validationError as any).fieldErrors = error.response.data.fieldErrors;
+      (validationError as any).message = error.response.data.message;
+      (validationError as any).status = error.response.status;
+
+      return Promise.reject(validationError);
+    }
 
     if (
       error.response?.status === 401 &&
@@ -102,6 +112,7 @@ export const handleApiResponse = <T>(
   (error as any).status = response.status;
   (error as any).fieldErrors = (response.data as any).fieldErrors;
   (error as any).message = (response.data as any).message;
+
   throw error;
 };
 

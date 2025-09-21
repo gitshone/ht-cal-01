@@ -1,22 +1,26 @@
 import { Router } from 'express';
-import { healthController } from './health.controller';
+import { HealthController } from './health.controller';
 
-const router = Router();
+export const createHealthRoutes = (
+  healthController: HealthController
+): Router => {
+  const router = Router();
 
-// Health check route
-router.get(
-  '/',
-  healthController.handleAsync(
-    healthController.healthCheck.bind(healthController)
-  )
-);
+  // Health check route
+  router.get(
+    '/',
+    healthController.handleAsync(
+      healthController.healthCheck.bind(healthController)
+    )
+  );
 
-// Cache management routes
-router.post(
-  '/cache/clear',
-  healthController.handleAsync(
-    healthController.clearCache.bind(healthController)
-  )
-);
+  // Cache management routes
+  router.post(
+    '/cache/clear',
+    healthController.handleAsync(
+      healthController.clearCache.bind(healthController)
+    )
+  );
 
-export { router as healthRoutes };
+  return router;
+};

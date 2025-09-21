@@ -16,7 +16,7 @@ import timezone from 'dayjs/plugin/timezone';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import { cacheService } from '../../lib/cache';
+import { cacheService } from '../../core/lib/cache';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -38,6 +38,13 @@ export class EventsRepository extends BaseRepository {
         cursor: undefined,
       },
     };
+
+    // Try to get from cache first
+    const cachedResult = await cacheService.get(cacheKey);
+    if (cachedResult) {
+      this.logInfo('Events cache hit', { userId, params });
+      return cachedResult as EventListResponse;
+    }
 
     this.logInfo('Events cache miss, fetching from database', {
       userId,
@@ -323,13 +330,13 @@ export class EventsRepository extends BaseRepository {
       { count: events.length }
     );
 
-    const userIds = [...new Set(events.map(event => event.userId))];
+    const userIds = [...new Set(events.map((event: any) => event.userId))];
     for (const userId of userIds) {
-      await cacheService.invalidateEventCache(userId);
+      await cacheService.invalidateEventCache(userId as string);
     }
     this.logInfo('Event cache invalidated after createMany', { userIds });
 
-    return result;
+    return result as { count: number };
   }
 
   async updateMany(
@@ -367,9 +374,9 @@ export class EventsRepository extends BaseRepository {
       { count: updates.length }
     );
 
-    const userIds = [...new Set(events.map(event => event.userId))];
+    const userIds = [...new Set(events.map((event: any) => event.userId))];
     for (const userId of userIds) {
-      await cacheService.invalidateEventCache(userId);
+      await cacheService.invalidateEventCache(userId as string);
     }
     this.logInfo('Event cache invalidated after updateMany', { userIds });
   }
@@ -512,5 +519,3 @@ export class EventsRepository extends BaseRepository {
     );
   }
 }
-
-export const eventsRepository = new EventsRepository();

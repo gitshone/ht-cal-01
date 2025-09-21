@@ -1,5 +1,5 @@
 import { BaseService } from '../../core/base.service';
-import { bullQueueService } from './bull-queue.service';
+import { BullQueueService } from './bull-queue.service';
 
 export interface Job {
   id: string;
@@ -22,29 +22,31 @@ export interface JobResult {
 }
 
 export class QueueService extends BaseService {
+  constructor(private bullQueueService: BullQueueService) {
+    super();
+  }
+
   async addJob(type: string, data: Record<string, unknown>): Promise<string> {
-    return bullQueueService.addJob(type, data);
+    return this.bullQueueService.addJob(type, data);
   }
 
   async getJob(jobId: string): Promise<Job | null> {
-    return bullQueueService.getJob(jobId);
+    return this.bullQueueService.getJob(jobId);
   }
 
   async scheduleCleanupBlacklistedTokens(): Promise<string> {
-    return bullQueueService.scheduleCleanupBlacklistedTokens();
+    return this.bullQueueService.scheduleCleanupBlacklistedTokens();
   }
 
   async getQueueStats(): Promise<Record<string, any>> {
-    return bullQueueService.getQueueStats();
+    return this.bullQueueService.getQueueStats();
   }
 
   async pauseQueue(queueName: string): Promise<void> {
-    return bullQueueService.pauseQueue(queueName);
+    return this.bullQueueService.pauseQueue(queueName);
   }
 
   async resumeQueue(queueName: string): Promise<void> {
-    return bullQueueService.resumeQueue(queueName);
+    return this.bullQueueService.resumeQueue(queueName);
   }
 }
-
-export const queueService = new QueueService();

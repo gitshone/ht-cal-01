@@ -4,6 +4,7 @@ import {
   FirebaseAuthDto,
   ApiResponse,
   User,
+  UpdateUserHandleDto,
 } from '@ht-cal-01/shared-types';
 import { apiClient, handleApiResponse } from './client';
 
@@ -34,6 +35,15 @@ export class AuthService {
 
   async logout(): Promise<void> {
     await apiClient.post('/api/auth/logout');
+  }
+
+  async updateHandle(data: UpdateUserHandleDto): Promise<User> {
+    const response: AxiosResponse<ApiResponse<User>> = await apiClient.put(
+      '/api/auth/handle',
+      data
+    );
+
+    return handleApiResponse(response);
   }
 }
 

@@ -1,10 +1,15 @@
 import { BaseQueue, JobData, JobResult } from '../core/base-queue';
-import { eventsService } from '../../events/events.service';
 import { WEBSOCKET_EVENTS } from '@ht-cal-01/shared-types';
+import { EventsService } from '../../events/events.service';
+import { SocketsService } from '../../sockets/sockets.service';
 
 export class SyncEventsQueue extends BaseQueue {
-  constructor(redisConfig: any) {
-    super('sync-events', redisConfig);
+  constructor(
+    redisConfig: any,
+    socketsService: SocketsService,
+    private eventsService: EventsService
+  ) {
+    super('sync-events', redisConfig, socketsService);
   }
 
   protected async processJob(data: JobData): Promise<JobResult> {
@@ -13,7 +18,7 @@ export class SyncEventsQueue extends BaseQueue {
         throw new Error('User ID is required for sync events job');
       }
 
-      const result = await eventsService.syncEventsFromGoogle(
+      const result = await this.eventsService.syncEventsFromGoogle(
         data.userId as string
       );
       return {

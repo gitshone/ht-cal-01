@@ -44,5 +44,3 @@ export class CalendarRepository extends BaseRepository {
     );
   }
 }
-
-export const calendarRepository = new CalendarRepository();

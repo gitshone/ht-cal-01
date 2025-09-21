@@ -1,18 +1,21 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
+import { useAppDispatch, useAppSelector } from '../hooks/redux';
+import { loginWithGoogle, clearError } from '../store/slices/authSlice';
 
 const LoginPage: React.FC = () => {
-  const { isAuthenticated, isLoading, error, loginWithGoogle, clearError } =
-    useAuthStore();
+  const dispatch = useAppDispatch();
+  const { isAuthenticated, isLoading, error } = useAppSelector(
+    state => state.auth
+  );
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
 
   const handleGoogleLogin = async () => {
-    clearError();
-    await loginWithGoogle();
+    dispatch(clearError());
+    dispatch(loginWithGoogle());
   };
 
   return (
