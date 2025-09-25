@@ -3,7 +3,6 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import * as Sentry from '@sentry/nestjs';
 import { EventsRepository } from '../repositories/events.repository';
 import {
   CreateEventDto,
@@ -14,6 +13,7 @@ import {
 } from '../dtos/event.dto';
 import { PaginatedResponseDto } from '../../../shared/dto';
 import { ProviderQueueService } from '../../integrations/services/provider-queue.service';
+import { SentryOperation } from '../../../core/decorators/sentry-operation.decorator';
 
 @Injectable()
 export class EventsService {
@@ -22,58 +22,42 @@ export class EventsService {
     private providerQueueService: ProviderQueueService
   ) {}
 
+  @SentryOperation({
+    operation: 'create',
+    category: 'database',
+    description: 'Creating new event',
+  })
   async create(
     userId: string,
     createEventDto: CreateEventDto
   ): Promise<EventResponseDto> {
-    try {
-      const providerType = createEventDto.providerType || 'google';
+    const providerType = createEventDto.providerType || 'google';
 
-      const event = await this.eventsRepository.createWithUserId(userId, {
-        ...createEventDto,
+    const event = await this.eventsRepository.createWithUserId(userId, {
+      ...createEventDto,
+      providerType,
+    });
+
+    if (providerType !== 'local') {
+      await this.queueProviderOperation(
+        'create',
+        userId,
         providerType,
-      });
-
-      if (providerType !== 'local') {
-        await this.queueProviderOperation(
-          'create',
-          userId,
-          providerType,
-          event.id,
-          undefined,
-          createEventDto
-        );
-      }
-
-      // Add breadcrumb for successful event creation
-      Sentry.addBreadcrumb({
-        message: 'Event created successfully',
-        category: 'event',
-        level: 'info',
-        data: {
-          eventId: event.id,
-          userId,
-          providerType,
-        },
-      });
-
-      return event;
-    } catch (error) {
-      // Capture the error with additional context
-      Sentry.captureException(error, {
-        tags: {
-          operation: 'create_event',
-          userId,
-          providerType: createEventDto.providerType || 'google',
-        },
-        extra: {
-          eventData: createEventDto,
-        },
-      });
-      throw error;
+        event.id,
+        undefined,
+        createEventDto
+      );
     }
+
+    return event;
   }
 
+  @SentryOperation({
+    operation: 'read',
+    category: 'database',
+    description: 'Fetching events list',
+    trackSuccess: false,
+  })
   async findAll(
     userId: string,
     skip = 0,
@@ -87,6 +71,12 @@ export class EventsService {
     return new PaginatedResponseDto(events, total, skip, take);
   }
 
+  @SentryOperation({
+    operation: 'read',
+    category: 'database',
+    description: 'Fetching events by date range',
+    trackSuccess: false,
+  })
   async getEvents(
     userId: string,
     viewType: CalendarViewType,
@@ -125,6 +115,12 @@ export class EventsService {
     });
   }
 
+  @SentryOperation({
+    operation: 'read',
+    category: 'database',
+    description: 'Finding single event',
+    trackSuccess: false,
+  })
   async findOne(id: string, userId: string): Promise<EventResponseDto> {
     const event = await this.eventsRepository.findByUserIdAndId(userId, id);
     if (!event) {
@@ -133,6 +129,12 @@ export class EventsService {
     return event;
   }
 
+  @SentryOperation({
+    operation: 'read',
+    category: 'database',
+    description: 'Finding events by date range',
+    trackSuccess: false,
+  })
   async findByDateRange(
     userId: string,
     startDate: Date,
@@ -141,6 +143,11 @@ export class EventsService {
     return this.eventsRepository.findByDateRange(userId, startDate, endDate);
   }
 
+  @SentryOperation({
+    operation: 'update',
+    category: 'database',
+    description: 'Updating event',
+  })
   async update(
     id: string,
     userId: string,
@@ -183,6 +190,11 @@ export class EventsService {
     return updatedEvent;
   }
 
+  @SentryOperation({
+    operation: 'delete',
+    category: 'database',
+    description: 'Deleting event',
+  })
   async remove(id: string, userId: string): Promise<EventResponseDto> {
     const existingEvent = await this.findOne(id, userId);
 
@@ -204,6 +216,12 @@ export class EventsService {
     return deletedEvent;
   }
 
+  @SentryOperation({
+    operation: 'read',
+    category: 'database',
+    description: 'Finding event by external ID',
+    trackSuccess: false,
+  })
   async findByExternalId(
     externalEventId: string,
     providerType: string
@@ -214,6 +232,11 @@ export class EventsService {
     );
   }
 
+  @SentryOperation({
+    operation: 'update',
+    category: 'database',
+    description: 'Updating event sync time',
+  })
   async updateSyncTime(id: string): Promise<EventResponseDto> {
     return this.eventsRepository.updateSyncTime(id);
   }

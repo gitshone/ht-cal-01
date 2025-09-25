@@ -8,6 +8,7 @@ import {
   LoginResponseDto,
 } from '../dtos/auth.dto';
 import * as admin from 'firebase-admin';
+import { SentryOperation } from '../../../core/decorators/sentry-operation.decorator';
 
 @Injectable()
 export class AuthService {
@@ -66,6 +67,24 @@ export class AuthService {
           lastName: lastNameParts.join(' ') || '',
         },
       });
+    }
+
+    return user;
+  }
+
+  @SentryOperation({
+    operation: 'read',
+    category: 'database',
+    description: 'Getting user by ID',
+    trackSuccess: false,
+  })
+  async getUserById(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
     }
 
     return user;

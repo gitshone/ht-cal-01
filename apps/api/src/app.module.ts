@@ -16,6 +16,7 @@ import { HealthModule } from './modules/health/health.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { JwtAuthGuard } from './core/guards/jwt-auth.guard';
 import { GlobalExceptionFilter } from './core/filters/global-exception.filter';
+import { SentryInterceptorsModule } from './core/interceptors/sentry-interceptors.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { GlobalExceptionFilter } from './core/filters/global-exception.filter';
     CacheModule,
     WebSocketsModule,
     QueueModule,
+    SentryInterceptorsModule,
 
     // Throttling
     ThrottlerModule.forRoot([

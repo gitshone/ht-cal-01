@@ -15,6 +15,7 @@ import {
   ProviderConfigDto,
 } from '../dtos/integrations.dto';
 import { CreateEventDto, UpdateEventDto } from '../../events/dtos/event.dto';
+import { SentryOperation } from '../../../core/decorators/sentry-operation.decorator';
 
 @Injectable()
 export class IntegrationsService {
@@ -24,6 +25,12 @@ export class IntegrationsService {
     private googleCalendarProvider: GoogleCalendarProvider
   ) {}
 
+  @SentryOperation({
+    operation: 'read',
+    category: 'integration',
+    description: 'Getting connected providers',
+    trackSuccess: false,
+  })
   async getConnectedProviders(userId: string): Promise<ProviderStatusDto[]> {
     const integrations = await this.userIntegrationsRepository.findByUserId(
       userId
@@ -37,6 +44,12 @@ export class IntegrationsService {
     }));
   }
 
+  @SentryOperation({
+    operation: 'read',
+    category: 'integration',
+    description: 'Getting provider configurations',
+    trackSuccess: false,
+  })
   async getProviderConfigs(): Promise<ProviderConfigDto[]> {
     const configs = await this.providerRegistry.getAllProviderConfigs();
     return Promise.all(
@@ -47,6 +60,11 @@ export class IntegrationsService {
     );
   }
 
+  @SentryOperation({
+    operation: 'connect',
+    category: 'integration',
+    description: 'Connecting provider',
+  })
   async connectProvider(
     userId: string,
     providerType: string,
@@ -78,6 +96,11 @@ export class IntegrationsService {
     }
   }
 
+  @SentryOperation({
+    operation: 'disconnect',
+    category: 'integration',
+    description: 'Disconnecting provider',
+  })
   async disconnectProvider(
     userId: string,
     providerType: string
@@ -103,6 +126,12 @@ export class IntegrationsService {
     }
   }
 
+  @SentryOperation({
+    operation: 'read',
+    category: 'integration',
+    description: 'Getting provider status',
+    trackSuccess: false,
+  })
   async getProviderStatus(
     userId: string,
     providerType: string
@@ -129,6 +158,11 @@ export class IntegrationsService {
     };
   }
 
+  @SentryOperation({
+    operation: 'sync',
+    category: 'integration',
+    description: 'Syncing calendar with provider',
+  })
   async syncCalendar(userId: string, providerType: string): Promise<void> {
     const integration =
       await this.userIntegrationsRepository.findByUserIdAndProvider(
@@ -151,6 +185,12 @@ export class IntegrationsService {
     });
   }
 
+  @SentryOperation({
+    operation: 'read',
+    category: 'integration',
+    description: 'Getting auth URL for provider',
+    trackSuccess: false,
+  })
   async getAuthUrl(providerType: string): Promise<string> {
     if (!this.providerRegistry.hasProvider(providerType as any)) {
       throw new BadRequestException(`Provider ${providerType} not supported`);
@@ -166,6 +206,11 @@ export class IntegrationsService {
     }
   }
 
+  @SentryOperation({
+    operation: 'create',
+    category: 'integration',
+    description: 'Creating event with external provider',
+  })
   async createEventWithProvider(
     userId: string,
     providerType: string,
@@ -193,6 +238,11 @@ export class IntegrationsService {
     }
   }
 
+  @SentryOperation({
+    operation: 'update',
+    category: 'integration',
+    description: 'Updating event with external provider',
+  })
   async updateEventWithProvider(
     userId: string,
     providerType: string,
@@ -225,6 +275,11 @@ export class IntegrationsService {
     }
   }
 
+  @SentryOperation({
+    operation: 'delete',
+    category: 'integration',
+    description: 'Deleting event with external provider',
+  })
   async deleteEventWithProvider(
     userId: string,
     providerType: string,

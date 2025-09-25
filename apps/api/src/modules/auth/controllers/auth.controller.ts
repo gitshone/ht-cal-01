@@ -24,8 +24,10 @@ import {
   LogoutDto,
   LoginResponseDto,
   UpdateHandleDto,
+  UserProfileDto,
 } from '../dtos/auth.dto';
 import { ApiResponseDto } from '../../../shared/dto';
+import { SentryOperation } from '../../../core/decorators/sentry-operation.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -88,13 +90,24 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'User profile retrieved successfully',
+    type: UserProfileDto,
+  })
+  @SentryOperation({
+    operation: 'read',
+    category: 'api',
+    description: 'Getting user profile',
+    trackSuccess: false,
   })
   async getProfile(@Req() req: any): Promise<ApiResponseDto> {
+    const user = await this.authService.getUserById(req.user.userId);
+
     return ApiResponseDto.success('Profile retrieved successfully', {
-      id: req.user.userId,
-      email: req.user.email,
-      firstName: req.user.firstName,
-      lastName: req.user.lastName,
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      handle: user.handle,
+      handleUpdatedAt: user.handleUpdatedAt?.toISOString() || null,
     });
   }
 

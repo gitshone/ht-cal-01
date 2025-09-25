@@ -47,3 +47,34 @@ export class LoginResponseDto {
     handle?: string;
   };
 }
+
+export class UserProfileDto {
+  @ApiProperty({ description: 'User ID' })
+  id!: string;
+
+  @ApiProperty({ description: 'User email address' })
+  email!: string;
+
+  @ApiProperty({ description: 'User first name' })
+  firstName!: string;
+
+  @ApiProperty({ description: 'User last name' })
+  lastName!: string;
+
+  @ApiProperty({
+    description:
+      'User handle for public booking URLs (e.g., youtube.com/handle)',
+    required: false,
+    nullable: true,
+  })
+  handle?: string | null;
+
+  @ApiProperty({
+    description: 'Timestamp when the handle was last updated',
+    required: false,
+    nullable: true,
+    type: 'string',
+    format: 'date-time',
+  })
+  handleUpdatedAt?: string | null;
+}
