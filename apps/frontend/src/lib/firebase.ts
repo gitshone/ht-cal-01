@@ -21,4 +21,9 @@ export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope('email');
 googleProvider.addScope('profile');
 
+// Configure for redirect-based authentication to reduce COOP warnings
+googleProvider.setCustomParameters({
+  prompt: 'select_account',
+});
+
 export default app;

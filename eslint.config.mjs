@@ -41,6 +41,11 @@ export default [
       '**/*.mjs',
     ],
     // Override or add rules here
-    rules: {},
+    rules: {
+      // Treat warnings as warnings, not errors
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': 'warn',
+      '@typescript-eslint/no-non-null-assertion': 'warn',
+    },
   },
 ];

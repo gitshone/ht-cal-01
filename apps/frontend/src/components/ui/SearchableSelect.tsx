@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 
 interface SearchableSelectProps {
   options: Array<{ value: string; label: string }>;
@@ -7,6 +7,8 @@ interface SearchableSelectProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  maxVisibleOptions?: number;
+  showSearchHint?: boolean;
 }
 
 const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -16,21 +18,41 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   placeholder = 'Search...',
   className = '',
   disabled = false,
+  maxVisibleOptions = 50,
+  showSearchHint = true,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredOptions, setFilteredOptions] = useState(options);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) {
+      return options.slice(0, maxVisibleOptions);
+    }
+
     const filtered = options.filter(
       option =>
         option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
         option.value.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    setFilteredOptions(filtered);
-  }, [searchTerm, options]);
+
+    return filtered.slice(0, maxVisibleOptions);
+  }, [searchTerm, options, maxVisibleOptions]);
+
+  const hasMoreResults = useMemo(() => {
+    if (!searchTerm) {
+      return options.length > maxVisibleOptions;
+    }
+
+    const totalFiltered = options.filter(
+      option =>
+        option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        option.value.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return totalFiltered.length > maxVisibleOptions;
+  }, [searchTerm, options, maxVisibleOptions]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -116,9 +138,28 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           ref={dropdownRef}
           className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto"
         >
+          {/* Search Hint */}
+          {showSearchHint &&
+            !searchTerm &&
+            options.length > maxVisibleOptions && (
+              <div className="px-3 py-2 text-xs text-gray-500 bg-gray-50 border-b">
+                Showing first {maxVisibleOptions} of {options.length} timezones.
+                Type to search all.
+              </div>
+            )}
+
+          {/* Results Count */}
+          {searchTerm && (
+            <div className="px-3 py-2 text-xs text-gray-500 bg-gray-50 border-b">
+              {filteredOptions.length} result
+              {filteredOptions.length !== 1 ? 's' : ''} found
+              {hasMoreResults && ` (showing first ${maxVisibleOptions})`}
+            </div>
+          )}
+
           {filteredOptions.length === 0 ? (
             <div className="px-3 py-2 text-sm text-gray-500">
-              No options found
+              No timezones found
             </div>
           ) : (
             filteredOptions.map(option => (
@@ -135,6 +176,19 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                 {option.label}
               </button>
             ))
+          )}
+
+          {/* More Results Hint */}
+          {hasMoreResults && (
+            <div className="px-3 py-2 text-xs text-gray-500 bg-gray-50 border-t">
+              {searchTerm
+                ? `Type more to narrow down ${
+                    options.length - maxVisibleOptions
+                  } more results`
+                : `Type to search through ${
+                    options.length - maxVisibleOptions
+                  } more timezones`}
+            </div>
           )}
         </div>
       )}

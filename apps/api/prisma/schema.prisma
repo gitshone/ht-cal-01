@@ -1,0 +1,158 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  firstName String   @map("first_name")
+  lastName  String   @map("last_name")
+  handle    String?  @unique // Unique handle for public booking URLs (e.g., youtube.com/handle)
+  handleUpdatedAt DateTime? @map("handle_updated_at") // Track when handle was last changed
+
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  events Event[]
+  blacklistedTokens TokenBlacklist[]
+  settings UserSettings?
+  unavailabilityBlocks UnavailabilityBlock[]
+  integrations UserIntegration[]
+
+  @@map("users")
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  title       String
+  startDate   DateTime  @map("start_date")
+  endDate     DateTime  @map("end_date")
+  isAllDay    Boolean   @default(false) @map("is_all_day")
+  status      String    @default("confirmed") // confirmed, tentative, cancelled
+  
+  // Multi-provider support
+  providerType String   @default("google") @map("provider_type") // google, microsoft, zoom
+  externalEventId String? @map("external_event_id") // ID from external provider
+  meetingUrl     String? @map("meeting_url") // Video meeting URL
+  meetingType     String? @map("meeting_type") // video_call, phone_call, in_person
+  description     String? // Event description
+  location        String? // Event location
+  
+  timezone        String? // Timezone from provider
+  
+  // Attendees for video calls
+  attendees       Json? // Array of email addresses for video call participants
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("events")
+  @@index([userId, startDate])
+  @@index([userId, providerType, startDate])
+  @@index([externalEventId])
+}
+
+model UserIntegration {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  providerType String  @map("provider_type") // google, microsoft, zoom
+  providerId  String   @map("provider_id") // External provider user ID
+  accessToken String   @map("access_token")
+  refreshToken String? @map("refresh_token")
+  expiresAt   DateTime? @map("expires_at")
+  scope       String[] // OAuth scopes
+  isActive    Boolean  @default(true) @map("is_active")
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  lastSyncAt  DateTime? @map("last_sync_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_integrations")
+  @@unique([userId, providerType])
+  @@index([userId, providerType])
+  @@index([providerType, isActive])
+}
+
+model TokenBlacklist {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  type      String   // 'access' or 'refresh'
+  expiresAt DateTime @map("expires_at")
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("token_blacklist")
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model UserSettings {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  
+  // Availability settings
+  defaultWorkingHours Json? @map("default_working_hours") // { monday: { start: "09:00", end: "17:00" }, ... }
+  timezone           String @default("UTC")
+  
+  // Invite customization
+  inviteTitle        String? @map("invite_title")
+  inviteDescription  String? @map("invite_description")
+  inviteLogoUrl      String? @map("invite_logo_url")
+  inviteLogoKey      String? @map("invite_logo_key") // S3 key for the logo file
+  availableDurations Int[]   @default([15, 30, 60]) // Available meeting durations in minutes
+  acceptsNewMeetings Boolean @default(true) @map("accepts_new_meetings") // Whether user accepts new meeting requests
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+model UnavailabilityBlock {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  title     String   // e.g., "Lunch Break", "Personal Time"
+  startTime String   @map("start_time") // "12:00"
+  endTime   String   @map("end_time")   // "13:00"
+  days      String[] // ["monday", "tuesday", ...] or ["monday"] for specific days
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("unavailability_blocks")
+  @@index([userId])
+}

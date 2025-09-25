@@ -2,13 +2,13 @@
   "name": "@ht-cal-01/shared-types",
   "version": "0.0.1",
   "private": true,
-  "type": "module",
-  "main": "./dist/src/index.js",
-  "types": "./dist/src/index.d.ts",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/src/index.js",
-      "types": "./dist/src/index.d.ts"
+      "require": "./src/index.js",
+      "import": "./src/index.js",
+      "types": "./src/index.d.ts"
     }
   },
   "dependencies": {

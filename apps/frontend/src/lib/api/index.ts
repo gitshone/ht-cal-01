@@ -8,8 +8,7 @@ export {
 } from './client';
 
 export { authService, AuthService } from './auth.service';
-export { calendarService, CalendarService } from './calendar.service';
-export { eventService, EventService } from './event.service';
+export { eventsService, EventsService } from './events.service';
 export { settingsService } from './settings.service';
 
 // Default export

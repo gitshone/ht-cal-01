@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { showSuccess, showError } from '../store/slices/toastSlice';
 import {
@@ -19,14 +20,16 @@ import SettingsTabs from './settings/SettingsTabs';
 import GeneralTab from './settings/GeneralTab';
 import AvailabilityTab from './settings/AvailabilityTab';
 import InviteCustomizationTab from './settings/InviteCustomizationTab';
+import ConnectedAppsTab from './settings/ConnectedAppsTab';
 import UnavailabilityBlockModal from './settings/UnavailabilityBlockModal';
 import { authService } from '../lib/api';
 
 const SettingsList: React.FC = () => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector(state => state.auth);
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<
-    'general' | 'availability' | 'invite'
+    'general' | 'availability' | 'invite' | 'connected-apps'
   >('general');
   const [showAddBlockModal, setShowAddBlockModal] = useState(false);
   const [editingBlock, setEditingBlock] = useState<any>(null);
@@ -49,6 +52,19 @@ const SettingsList: React.FC = () => {
 
   const isLoading = settingsLoading || blocksLoading;
   const error = settingsError || blocksError;
+
+  // Handle tab parameter from URL
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (
+      tabParam &&
+      ['general', 'availability', 'invite', 'connected-apps'].includes(tabParam)
+    ) {
+      setActiveTab(
+        tabParam as 'general' | 'availability' | 'invite' | 'connected-apps'
+      );
+    }
+  }, [searchParams]);
 
   const handleSaveSettings = async (data: UpdateUserSettingsDto) => {
     await updateSettingsMutation.mutateAsync(data);
@@ -192,37 +208,44 @@ const SettingsList: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
-        <p className="text-gray-600">
-          Manage your availability and customize your invite page
-        </p>
-      </div>
-
+    <div className="space-y-0">
       <SettingsTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* Tab Content */}
       <div className={activeTab === 'general' ? 'block' : 'hidden'}>
-        {user && <GeneralTab user={user} onUpdateHandle={handleUpdateHandle} />}
+        <div className="p-8">
+          {user && (
+            <GeneralTab user={user} onUpdateHandle={handleUpdateHandle} />
+          )}
+        </div>
       </div>
 
       <div className={activeTab === 'availability' ? 'block' : 'hidden'}>
-        <AvailabilityTab
-          settings={settings}
-          unavailabilityBlocks={unavailabilityBlocks || []}
-          onSaveSettings={handleSaveSettings}
-          onAddBlock={() => setShowAddBlockModal(true)}
-          onEditBlock={setEditingBlock}
-          onDeleteBlock={handleDeleteUnavailabilityBlock}
-        />
+        <div className="p-8">
+          <AvailabilityTab
+            settings={settings}
+            unavailabilityBlocks={unavailabilityBlocks || []}
+            onSaveSettings={handleSaveSettings}
+            onAddBlock={() => setShowAddBlockModal(true)}
+            onEditBlock={setEditingBlock}
+            onDeleteBlock={handleDeleteUnavailabilityBlock}
+          />
+        </div>
       </div>
 
       <div className={activeTab === 'invite' ? 'block' : 'hidden'}>
-        <InviteCustomizationTab
-          settings={settings}
-          onSaveSettings={handleSaveSettings}
-        />
+        <div className="p-8">
+          <InviteCustomizationTab
+            settings={settings}
+            onSaveSettings={handleSaveSettings}
+          />
+        </div>
+      </div>
+
+      <div className={activeTab === 'connected-apps' ? 'block' : 'hidden'}>
+        <div className="p-8">
+          <ConnectedAppsTab />
+        </div>
       </div>
 
       {/* Add/Edit Unavailability Block Modal */}

@@ -4,6 +4,8 @@ import {
   CreateUnavailabilityBlockDto,
   UpdateUnavailabilityBlockDto,
 } from '@ht-cal-01/shared-types';
+import { TimezoneAwareTimeInput } from '../ui/TimezoneAwareDateTimePicker';
+import { timezoneService } from '../../services/timezone.service';
 
 interface UnavailabilityBlockModalProps {
   block?: UnavailabilityBlock | null;
@@ -142,17 +144,16 @@ const UnavailabilityBlockModal: React.FC<UnavailabilityBlockModalProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Start Time
               </label>
-              <input
-                type="time"
+              <TimezoneAwareTimeInput
                 value={formData.startTime}
-                onChange={e =>
-                  setFormData(prev => ({ ...prev, startTime: e.target.value }))
+                onChange={value =>
+                  setFormData(prev => ({ ...prev, startTime: value }))
                 }
+                timezone={timezoneService.getCurrentTimezone()}
                 className={getFieldClassName(
                   'startTime',
                   'w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
                 )}
-                required
               />
               {getFieldError('startTime') && (
                 <p className="mt-1 text-sm text-red-600">
@@ -165,17 +166,16 @@ const UnavailabilityBlockModal: React.FC<UnavailabilityBlockModalProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 End Time
               </label>
-              <input
-                type="time"
+              <TimezoneAwareTimeInput
                 value={formData.endTime}
-                onChange={e =>
-                  setFormData(prev => ({ ...prev, endTime: e.target.value }))
+                onChange={value =>
+                  setFormData(prev => ({ ...prev, endTime: value }))
                 }
+                timezone={timezoneService.getCurrentTimezone()}
                 className={getFieldClassName(
                   'endTime',
                   'w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
                 )}
-                required
               />
               {getFieldError('endTime') && (
                 <p className="mt-1 text-sm text-red-600">

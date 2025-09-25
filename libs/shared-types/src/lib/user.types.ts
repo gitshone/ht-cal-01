@@ -3,12 +3,11 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  handle?: string; // Unique handle for public booking URLs
-  handleUpdatedAt?: Date; // When handle was last changed
+  handle?: string;
+  handleUpdatedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
-  hasEvents?: boolean; // Optional for backward compatibility
-  settings?: UserSettings; // Optional settings
+  settings?: UserSettings;
 }
 
 export interface CreateUserDto {

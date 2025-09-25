@@ -10,7 +10,7 @@
     "declaration": true,
     "types": ["node"],
     "noEmitOnError": false,
-    "module": "esnext",
+    "module": "commonjs",
     "target": "es2022"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/index.ts"],

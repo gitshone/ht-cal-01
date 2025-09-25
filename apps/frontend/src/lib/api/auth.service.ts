@@ -1,19 +1,18 @@
 import { AxiosResponse } from 'axios';
 import {
   AuthResponseDto,
-  FirebaseAuthDto,
   ApiResponse,
   User,
   UpdateUserHandleDto,
 } from '@ht-cal-01/shared-types';
-import { apiClient, handleApiResponse } from './client';
+import { apiClient, handleApiResponse, getTokens } from './client';
 
 export class AuthService {
   async loginWithFirebase(firebaseToken: string): Promise<AuthResponseDto> {
     const response: AxiosResponse<ApiResponse<AuthResponseDto>> =
-      await apiClient.post('/api/auth/login/firebase', {
-        firebaseToken,
-      } as FirebaseAuthDto);
+      await apiClient.post('/api/auth/firebase-login', {
+        idToken: firebaseToken, // Changed from firebaseToken to idToken to match new API
+      });
 
     return handleApiResponse(response);
   }
@@ -34,7 +33,8 @@ export class AuthService {
   }
 
   async logout(): Promise<void> {
-    await apiClient.post('/api/auth/logout');
+    const { refreshToken } = getTokens();
+    await apiClient.post('/api/auth/logout', { refreshToken });
   }
 
   async updateHandle(data: UpdateUserHandleDto): Promise<User> {

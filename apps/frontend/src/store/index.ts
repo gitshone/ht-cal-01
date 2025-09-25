@@ -4,18 +4,18 @@ import storage from 'redux-persist/lib/storage';
 import { combineReducers } from '@reduxjs/toolkit';
 import authSlice from './slices/authSlice';
 import toastSlice from './slices/toastSlice';
-import viewTypeSlice from './slices/viewTypeSlice';
+import calendarSettingsSlice from './slices/calendarSettingsSlice';
 
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['auth', 'viewType'],
+  whitelist: ['auth', 'calendarSettings'],
 };
 
 const rootReducer = combineReducers({
   auth: authSlice,
   toast: toastSlice,
-  viewType: viewTypeSlice,
+  calendarSettings: calendarSettingsSlice,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

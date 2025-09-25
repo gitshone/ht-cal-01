@@ -19,58 +19,28 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-8">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          {/* Header */}
-          <div className="text-center">
-            <div className="mx-auto h-12 w-12 bg-indigo-100 rounded-full flex items-center justify-center">
-              <svg
-                width="76"
-                height="76"
-                version="1.1"
-                viewBox="0 0 76 76"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <g transform="translate(-186,-38)">
-                  <path d="M244 56h-40v40h40V56z" fill="#fff" />
-                  <path
-                    d="M212.205 87.03c-1.495-1.01-2.53-2.485-3.095-4.435l3.47-1.43c.315 1.2.865 2.13 1.65 2.79.78.66 1.73.985 2.84.985 1.135 0 2.11-.345 2.925-1.035s1.225-1.57 1.225-2.635c0-1.09-.43-1.98-1.29-2.67-.86-.69-1.94-1.035-3.23-1.035h-2.005V74.13h1.8c1.11 0 2.045-.3 2.805-.9.76-.6 1.14-1.42 1.14-2.465 0 -.93-.34-1.67-1.02-2.225-.68-.555-1.54-.835-2.585-.835-1.02 0 -1.83.27-2.43.815a4.784 4.784 0 0 0 -1.31 2.005l-3.435-1.43c.455-1.29 1.29-2.43 2.515-3.415 1.225-.985 2.79-1.48 4.69-1.48 1.405 0 2.67.27 3.79.815 1.12.545 2 1.3 2.635 2.26.635.965.95 2.045.95 3.245 0 1.225-.295 2.26-.885 3.11-.59.85-1.315 1.5-2.175 1.955v.205a6.605 6.605 0 0 1 2.79 2.175c.725.975 1.09 2.14 1.09 3.5 0 1.36-.345 2.575-1.035 3.64s-1.645 1.905-2.855 2.515c-1.215.61-2.58.92-4.095.92-1.755.005-3.375-.5-4.87-1.51zM233.52 69.81l-3.81 2.755-1.905-2.89 6.835-4.93h2.62V88h-3.74V69.81z"
-                    fill="#4285F4"
-                  />
-                  <path d="M244 96h-40v18h40V96z" fill="#34A853" />
-                  <path
-                    d="M244 38h-52c-3.315 0 -6 2.685-6 6v52h18V56h40V38z"
-                    fill="#4285F4"
-                  />
-                  <path
-                    d="M186 96v12c0 3.315 2.685 6 6 6h12V96h-18z"
-                    fill="#188038"
-                  />
-                  <path d="M262 56h-18v40h18V56z" fill="#FBBC04" />
-                  <path
-                    d="M262 56V44c0-3.315-2.685-6-6-6h-12v18h18z"
-                    fill="#1967D2"
-                  />
-                  <path d="M244 114l18-18h-18v18z" fill="#EA4335" />
-                </g>
-              </svg>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        {/* Main Card */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/20 p-8">
+          {/* Logo and Header */}
+          <div className="text-center mb-8">
+            <div className="mx-auto w-full h-14 mb-6 flex items-center justify-center">
+              <img
+                src="/logo-icon.png"
+                alt="HT Calendar Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
-            <h2 className="mt-6 text-3xl font-bold text-gray-900">
-              Welcome to HT Calendar
-            </h2>
-            <p className="mt-2 text-sm text-gray-600">
-              Sign in to your account to get started
-            </p>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="mt-6 bg-red-50 border border-red-200 rounded-md p-4">
-              <div className="flex">
+            <div className="mb-6 bg-red-50/80 backdrop-blur-sm border border-red-200/50 rounded-xl p-4">
+              <div className="flex items-start">
                 <div className="flex-shrink-0">
                   <svg
-                    className="h-5 w-5 text-red-400"
+                    className="h-5 w-5 text-red-500"
                     viewBox="0 0 20 20"
                     fill="currentColor"
                   >
@@ -82,28 +52,26 @@ const LoginPage: React.FC = () => {
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">
+                  <h3 className="text-sm font-semibold text-red-800">
                     Authentication Error
                   </h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    <p>{error}</p>
-                  </div>
+                  <p className="mt-1 text-sm text-red-700">{error}</p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Login Form */}
-          <div className="mt-8 space-y-6">
+          {/* Login Button */}
+          <div className="space-y-4">
             <button
               onClick={handleGoogleLogin}
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+              className="mt-14 group relative w-full h-12 flex items-center justify-center px-6 py-4 bg-white border-2 border-gray-200 rounded-xl text-gray-700 font-medium hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
             >
               {isLoading ? (
                 <div className="flex items-center">
                   <svg
-                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-700"
+                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-600"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -122,7 +90,7 @@ const LoginPage: React.FC = () => {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  Signing in...
+                  <span className="text-gray-700">Signing in...</span>
                 </div>
               ) : (
                 <div className="flex items-center">
@@ -144,11 +112,25 @@ const LoginPage: React.FC = () => {
                       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                     />
                   </svg>
-                  Continue with Google
+                  <span className="text-gray-700">Continue with Google</span>
                 </div>
               )}
             </button>
           </div>
+
+          {/* Footer */}
+          <div className="mt-8 text-center">
+            <p className="text-xs text-gray-500">
+              By signing in, you agree to our terms of service and privacy
+              policy
+            </p>
+          </div>
+        </div>
+
+        {/* Background Decoration */}
+        <div className="absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-400/20 rounded-full blur-3xl"></div>
         </div>
       </div>
     </div>

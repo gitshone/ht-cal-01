@@ -3,8 +3,35 @@ import { signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from '../../lib/firebase';
 import { authService, setTokens, clearTokens } from '../../lib/api';
 import { googleOAuthService } from '../../lib/googleOAuth';
-import { AuthErrorCode, User } from '@ht-cal-01/shared-types';
+import { User } from '@ht-cal-01/shared-types';
 import { queryClient } from '../../lib/react-query';
+
+enum AuthErrorCode {
+  AUTHENTICATION_REQUIRED = 'AUTHENTICATION_REQUIRED',
+  INVALID_TOKEN = 'INVALID_TOKEN',
+  TOKEN_EXPIRED = 'TOKEN_EXPIRED',
+  TOKEN_MALFORMED = 'TOKEN_MALFORMED',
+  REFRESH_TOKEN_INVALID = 'REFRESH_TOKEN_INVALID',
+  REFRESH_TOKEN_EXPIRED = 'REFRESH_TOKEN_EXPIRED',
+  FIREBASE_AUTH_FAILED = 'FIREBASE_AUTH_FAILED',
+  FIREBASE_TOKEN_INVALID = 'FIREBASE_TOKEN_INVALID',
+  FIREBASE_USER_NOT_FOUND = 'FIREBASE_USER_NOT_FOUND',
+  FIREBASE_VERIFICATION_FAILED = 'FIREBASE_VERIFICATION_FAILED',
+  USER_NOT_FOUND = 'USER_NOT_FOUND',
+  USER_ALREADY_EXISTS = 'USER_ALREADY_EXISTS',
+  USER_CREATION_FAILED = 'USER_CREATION_FAILED',
+  USER_UPDATE_FAILED = 'USER_UPDATE_FAILED',
+  USER_DELETION_FAILED = 'USER_DELETION_FAILED',
+  INVALID_EMAIL = 'INVALID_EMAIL',
+  INVALID_PASSWORD = 'INVALID_PASSWORD',
+  MISSING_REQUIRED_FIELDS = 'MISSING_REQUIRED_FIELDS',
+  INVALID_INPUT = 'INVALID_INPUT',
+  INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR',
+  DATABASE_ERROR = 'DATABASE_ERROR',
+  EXTERNAL_SERVICE_ERROR = 'EXTERNAL_SERVICE_ERROR',
+  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR',
+}
 
 export interface AuthState {
   isAuthenticated: boolean;
@@ -44,8 +71,8 @@ export const loginWithGoogle = createAsyncThunk(
       // Authenticate with backend
       const authResponse = await authService.loginWithFirebase(idToken);
 
-      // Store access token (refresh token is now in httpOnly cookie)
-      setTokens(authResponse.accessToken);
+      // Store both access and refresh tokens
+      setTokens(authResponse.accessToken, authResponse.refreshToken);
 
       const currentUser = await authService.getCurrentUser();
       return {
@@ -85,7 +112,7 @@ export const logout = createAsyncThunk(
       try {
         await authService.logout();
       } catch (error) {
-        console.error('Backend logout failed:', error);
+        // Handle logout error silently
       }
 
       clearTokens();
@@ -182,7 +209,6 @@ export const refreshUserData = createAsyncThunk(
       const userData = await authService.getCurrentUser();
       return userData;
     } catch (error) {
-      console.error('Failed to refresh user data:', error);
       return rejectWithValue('Failed to refresh user data');
     }
   }
@@ -195,7 +221,6 @@ export const getGoogleOAuthCode = createAsyncThunk(
       const code = await googleOAuthService.requestCalendarAccess();
       return code;
     } catch (error) {
-      console.error('Failed to get OAuth code:', error);
       return rejectWithValue('Failed to get OAuth code');
     }
   }

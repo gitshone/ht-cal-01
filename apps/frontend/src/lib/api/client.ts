@@ -5,22 +5,32 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 10000;
 
 let accessToken: string | null = null;
+let refreshToken: string | null = null;
 
 export const setTokens = (access: string, refresh?: string) => {
   accessToken = access;
   localStorage.setItem('accessToken', access);
+  if (refresh) {
+    refreshToken = refresh;
+    localStorage.setItem('refreshToken', refresh);
+  }
 };
 
 export const getTokens = () => {
   if (!accessToken) {
     accessToken = localStorage.getItem('accessToken');
   }
-  return { accessToken };
+  if (!refreshToken) {
+    refreshToken = localStorage.getItem('refreshToken');
+  }
+  return { accessToken, refreshToken };
 };
 
 export const clearTokens = () => {
   accessToken = null;
+  refreshToken = null;
   localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
 };
 
 export const apiClient: AxiosInstance = axios.create({
@@ -30,6 +40,31 @@ export const apiClient: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // Prevent automatic date serialization
+  transformRequest: [
+    data => {
+      // Don't transform FormData - let axios handle it properly
+      if (data instanceof FormData) {
+        return data;
+      }
+
+      // Ensure dates are sent as plain strings without automatic conversion
+      if (data && typeof data === 'object') {
+        const serialized = JSON.stringify(data, (key, value) => {
+          // If it's a date string, ensure it's sent as-is
+          if (
+            typeof value === 'string' &&
+            /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(value)
+          ) {
+            return value;
+          }
+          return value;
+        });
+        return serialized;
+      }
+      return JSON.stringify(data);
+    },
+  ],
 });
 
 apiClient.interceptors.request.use(
@@ -51,12 +86,15 @@ apiClient.interceptors.response.use(
   async error => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 400 && error.response.data?.fieldErrors) {
+    if (error.response?.status === 400) {
       const validationError = new Error(
-        error.response.data.error || 'Validation failed'
+        error.response.data.error ||
+          error.response.data.message ||
+          'Validation failed'
       );
       (validationError as any).response = error.response;
-      (validationError as any).fieldErrors = error.response.data.fieldErrors;
+      (validationError as any).fieldErrors =
+        error.response.data.fieldErrors || {};
       (validationError as any).message = error.response.data.message;
       (validationError as any).status = error.response.status;
 
@@ -73,17 +111,27 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const response = await axios.post<ApiResponse<{ accessToken: string }>>(
+        const { refreshToken } = getTokens();
+        if (!refreshToken) {
+          clearTokens();
+          window.location.href = '/login';
+          return Promise.reject(error);
+        }
+
+        const response = await axios.post<
+          ApiResponse<{ accessToken: string; refreshToken: string }>
+        >(
           `${API_URL}/api/auth/refresh`,
-          {},
+          { refreshToken },
           {
             withCredentials: true,
           }
         );
 
         if (response.data.success && response.data.data) {
-          const newAccessToken = response.data.data.accessToken;
-          setTokens(newAccessToken);
+          const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
+            response.data.data;
+          setTokens(newAccessToken, newRefreshToken);
 
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
           return apiClient(originalRequest);
@@ -110,8 +158,9 @@ export const handleApiResponse = <T>(
   const error = new Error(response.data.error || 'API request failed');
   (error as any).errorCode = response.data.errorCode;
   (error as any).status = response.status;
-  (error as any).fieldErrors = (response.data as any).fieldErrors;
+  (error as any).fieldErrors = (response.data as any).fieldErrors || {};
   (error as any).message = (response.data as any).message;
+  (error as any).response = response;
 
   throw error;
 };

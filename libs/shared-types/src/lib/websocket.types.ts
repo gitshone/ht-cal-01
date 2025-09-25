@@ -1,24 +1,16 @@
-/**
- * WebSocket event types used across frontend and backend
- * This ensures consistency and prevents typos in event names
- */
-
 export const WEBSOCKET_EVENTS = {
-  // Sync Events
-  SYNC_STARTED: 'sync_started',
-  SYNC_PROGRESS: 'sync_progress',
-  SYNC_COMPLETED: 'sync_completed',
-  SYNC_FAILED: 'sync_failed',
-
-  // Calendar Connection Events
-  CALENDAR_CONNECTION_STARTED: 'calendar_connection_started',
-  CALENDAR_CONNECTED: 'calendar_connected',
-  CALENDAR_CONNECTION_FAILED: 'calendar_connection_failed',
+  // Provider Connection Events
+  PROVIDER_CONNECTION_STARTED: 'provider_connection_started',
+  PROVIDER_CONNECTED: 'provider_connected',
+  PROVIDER_CONNECTION_FAILED: 'provider_connection_failed',
+  PROVIDER_DISCONNECTED: 'provider_disconnected',
 
   // Authentication Events
   AUTH_REQUIRED: 'auth_required',
   AUTH_SUCCESS: 'auth_success',
   AUTH_FAILED: 'auth_failed',
+  AUTHENTICATE: 'authenticate',
+  AUTHENTICATED: 'authenticated',
 
   // General Events
   CONNECTION_ESTABLISHED: 'connection_established',
@@ -26,10 +18,11 @@ export const WEBSOCKET_EVENTS = {
   ERROR: 'error',
 
   // Socket Events (for internal socket communication)
-  AUTHENTICATE: 'authenticate',
-  SYNC_UPDATE: 'sync_update',
   NOTIFICATION: 'notification',
   EVENT_UPDATE: 'event_update',
+  EVENT_UPDATED: 'event_updated',
+  PROVIDER_UPDATE: 'provider_update',
+  CALENDAR_SYNC_STATUS: 'calendar_sync_status',
 } as const;
 
 export type WebSocketEventType = typeof WEBSOCKET_EVENTS[keyof typeof WEBSOCKET_EVENTS];
@@ -44,31 +37,22 @@ export interface BaseWebSocketEvent {
   timestamp?: string;
 }
 
-export interface SyncEvent extends BaseWebSocketEvent {
-  type: typeof WEBSOCKET_EVENTS.SYNC_STARTED | typeof WEBSOCKET_EVENTS.SYNC_PROGRESS | typeof WEBSOCKET_EVENTS.SYNC_COMPLETED | typeof WEBSOCKET_EVENTS.SYNC_FAILED;
+export interface ProviderUpdateEvent {
+  type:
+    | typeof WEBSOCKET_EVENTS.PROVIDER_CONNECTION_STARTED
+    | typeof WEBSOCKET_EVENTS.PROVIDER_CONNECTED
+    | typeof WEBSOCKET_EVENTS.PROVIDER_CONNECTION_FAILED
+    | typeof WEBSOCKET_EVENTS.PROVIDER_DISCONNECTED;
+  providerType: string;
+  providerId?: string;
   message?: string;
-  data?: {
-    synced?: number;
-    created?: number;
-    updated?: number;
-    progress?: number;
-  };
-}
-
-export interface CalendarConnectionEvent extends BaseWebSocketEvent {
-  type: typeof WEBSOCKET_EVENTS.CALENDAR_CONNECTION_STARTED | typeof WEBSOCKET_EVENTS.CALENDAR_CONNECTED | typeof WEBSOCKET_EVENTS.CALENDAR_CONNECTION_FAILED;
-  message?: string;
-  data?: {
-    connected?: boolean;
-    synced?: number;
-    created?: number;
-    updated?: number;
-  };
+  data?: Record<string, unknown>;
 }
 
 export interface AuthEvent extends BaseWebSocketEvent {
-  type: typeof WEBSOCKET_EVENTS.AUTH_REQUIRED | typeof WEBSOCKET_EVENTS.AUTH_SUCCESS | typeof WEBSOCKET_EVENTS.AUTH_FAILED;
+  type: typeof WEBSOCKET_EVENTS.AUTH_REQUIRED | typeof WEBSOCKET_EVENTS.AUTH_SUCCESS | typeof WEBSOCKET_EVENTS.AUTH_FAILED | typeof WEBSOCKET_EVENTS.AUTHENTICATED;
   message?: string;
+  success?: boolean;
 }
 
 export interface ConnectionEvent extends BaseWebSocketEvent {
@@ -82,7 +66,33 @@ export interface ErrorEvent extends BaseWebSocketEvent {
   error?: string;
 }
 
-export type WebSocketEvent = SyncEvent | CalendarConnectionEvent | AuthEvent | ConnectionEvent | ErrorEvent;
+export interface NotificationEvent extends BaseWebSocketEvent {
+  type: typeof WEBSOCKET_EVENTS.NOTIFICATION;
+  title: string;
+  message: string;
+  data?: Record<string, unknown>;
+}
+
+export interface EventUpdateEvent extends BaseWebSocketEvent {
+  type: typeof WEBSOCKET_EVENTS.EVENT_UPDATE | typeof WEBSOCKET_EVENTS.EVENT_UPDATED;
+  event: any; // Event data
+}
+
+export interface CalendarSyncStatusEvent extends BaseWebSocketEvent {
+  type: typeof WEBSOCKET_EVENTS.CALENDAR_SYNC_STATUS;
+  provider: string;
+  status: string;
+  progress?: number;
+}
+
+export type WebSocketEvent = 
+  | ProviderUpdateEvent
+  | AuthEvent 
+  | ConnectionEvent 
+  | ErrorEvent 
+  | NotificationEvent 
+  | EventUpdateEvent 
+  | CalendarSyncStatusEvent;
 
 /**
  * WebSocket message structure

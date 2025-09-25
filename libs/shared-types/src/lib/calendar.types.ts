@@ -1,30 +1,23 @@
-export interface CalendarEvent {
-  id: string;
-  name: string;
-  date: string;
-  startTime: string; 
-  endTime: string;
-  isAllDay: boolean;
-}
-
 // Database Event model
 export interface Event {
   id: string;
   userId: string;
-  googleId?: string | null;
   title: string;
   startDate: Date;
   endDate: Date;
   isAllDay: boolean;
-  status: 'confirmed' | 'tentative' | 'cancelled';
-  googleCalendarId?: string | null;
-  googleEventId?: string | null;
-  googleHtmlLink?: string | null;
+  status: string; // Allow any string from database, validate in DTOs
+  providerType?: string | null;
+  externalEventId?: string | null;
+  meetingUrl?: string | null;
+  meetingType?: string | null;
+  description?: string | null;
+  location?: string | null;
   timezone?: string | null;
+  attendees?: string[] | null; // Array of email addresses for video call participants
   createdAt: Date;
   updatedAt: Date;
   syncedAt?: Date | null;
-  displayDate?: string;
 }
 
 // Event creation/update DTOs
@@ -33,6 +26,13 @@ export interface CreateEventDto {
   startDate: string;
   endDate: string;
   isAllDay: boolean;
+  timezone?: string; // IANA timezone string
+  providerType?: 'google' | 'microsoft' | 'zoom';
+  meetingType?: 'video_call' | 'phone_call' | 'in_person';
+  meetingUrl?: string;
+  description?: string;
+  location?: string;
+  attendees?: string[]; // Array of email addresses for video call participants
 }
 
 export interface UpdateEventDto {
@@ -40,119 +40,27 @@ export interface UpdateEventDto {
   startDate?: string;
   endDate?: string;
   isAllDay?: boolean;
+  timezone?: string; // IANA timezone string
   status?: 'confirmed' | 'tentative' | 'cancelled';
+  meetingType?: 'video_call' | 'phone_call' | 'in_person';
+  meetingUrl?: string;
+  description?: string;
+  location?: string;
+  attendees?: string[]; // Array of email addresses for video call participants
 }
 
-// Event filtering and grouping
-export interface EventFilterParams {
-  startDate?: string;
-  endDate?: string;
-  dateRange?: '1' | '7' | '30'; // days
-  groupBy?: 'day' | 'week';
-  limit?: number;
-  cursor?: string;
-}
+// Simplified event filtering (Google Calendar-like)
+export type CalendarViewType = 'day' | 'week' | 'month' | 'year';
+export type EventFilterType = 'all' | 'google' | 'microsoft' | 'zoom';
 
-export interface GroupedEvents {
-  [key: string]: Event[];
-}
-
-export interface EventListResponse {
-  groupedEvents: GroupedEvents;
+// Simplified response for events API
+export interface EventResponse {
+  events: Event[];
   dateRange: {
     start: string;
     end: string;
   };
-  groupBy: 'day' | 'week';
-  hasNextPage: boolean;
-  nextCursor?: string;
-  hasPreviousPage: boolean;
-  previousCursor?: string;
-}
-
-export interface GoogleCalendarEventData {
-  id?: string | null;
-  summary?: string | null;
-  start?: {
-    dateTime?: string | null;
-    date?: string | null;
-    timeZone?: string | null;
-  } | null;
-  end?: {
-    dateTime?: string | null;
-    date?: string | null;
-    timeZone?: string | null;
-  } | null;
-  status?: string | null;
-}
-
-export interface GoogleCalendarEvent {
-  id: string;
-  summary: string;
-  description?: string;
-  start: {
-    dateTime?: string;
-    date?: string;
-    timeZone?: string;
-  };
-  end: {
-    dateTime?: string;
-    date?: string;
-    timeZone?: string;
-  };
-  location?: string;
-  attendees?: CalendarAttendee[];
-  creator: {
-    email: string;
-    displayName?: string;
-  };
-  organizer: {
-    email: string;
-    displayName?: string;
-  };
-  status: 'confirmed' | 'tentative' | 'cancelled';
-  htmlLink?: string;
-  created: string;
-  updated: string;
-}
-
-export interface CalendarAttendee {
-  email: string;
-  displayName?: string;
-  responseStatus: 'needsAction' | 'declined' | 'tentative' | 'accepted';
-  optional?: boolean;
-}
-
-export interface CalendarListResponse {
-  events: CalendarEvent[];
-  nextPageToken?: string;
-  nextSyncToken?: string;
-}
-
-export interface CalendarListParams {
-  timeMin?: string;
-  timeMax?: string;
-  maxResults?: number;
-  singleEvents?: boolean;
-  orderBy?: 'startTime' | 'updated';
-  pageToken?: string;
-  syncToken?: string;
-}
-
-export interface GoogleAuthUrlResponse {
-  authUrl: string;
-}
-
-export interface GoogleTokenResponse {
-  accessToken: string;
-  refreshToken: string;
-}
-
-export interface GoogleRefreshTokenRequest {
-  refreshToken: string;
-}
-
-export interface GoogleRefreshTokenResponse {
-  accessToken: string;
+  viewType: CalendarViewType;
+  totalCount: number;
 }
 
