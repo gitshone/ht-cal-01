@@ -3,6 +3,7 @@ import {
   Catch,
   ArgumentsHost,
   BadRequestException,
+  UnauthorizedException,
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
@@ -42,6 +43,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         fieldErrors = { general: exception.message };
         errorCode = 'VALIDATION_ERROR';
       }
+    } else if (exception instanceof UnauthorizedException) {
+      status = exception.getStatus();
+      message = exception.message || 'Authentication required';
+      fieldErrors = { general: exception.message || 'Authentication required' };
+      errorCode = 'UNAUTHORIZED';
     } else if (exception instanceof Error) {
       status = 500;
       message = 'Internal server error';

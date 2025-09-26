@@ -1,4 +1,4 @@
-import { apiClient, handleApiResponse } from './client';
+import { apiClient } from './client';
 import {
   Event,
   CalendarViewType,
@@ -32,8 +32,9 @@ export class EventsService {
       params.append('searchQuery', searchQuery);
     }
 
-    const response = await apiClient.get(`/api/events?${params.toString()}`);
-    const result = handleApiResponse<{ events: Event[] }>(response);
+    const result = await apiClient.get<{ events: Event[] }>(
+      `/api/events?${params.toString()}`
+    );
 
     return {
       events: result.events,
@@ -50,8 +51,7 @@ export class EventsService {
    * Create an event
    */
   async createEvent(eventData: CreateEventDto): Promise<Event> {
-    const response = await apiClient.post('/api/events', eventData);
-    return handleApiResponse<Event>(response);
+    return apiClient.post<Event>('/api/events', eventData);
   }
 
   /**
@@ -61,27 +61,21 @@ export class EventsService {
     eventId: string,
     eventData: UpdateEventDto
   ): Promise<Event> {
-    const response = await apiClient.patch(`/api/events/${eventId}`, eventData);
-    return handleApiResponse<Event>(response);
+    return apiClient.patch<Event>(`/api/events/${eventId}`, eventData);
   }
 
   /**
    * Delete an event
    */
   async deleteEvent(eventId: string): Promise<void> {
-    const response = await apiClient.delete(`/api/events/${eventId}`);
-
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Failed to delete event');
-    }
+    await apiClient.delete(`/api/events/${eventId}`);
   }
 
   /**
    * Get a single event by ID
    */
   async getEventById(eventId: string): Promise<Event> {
-    const response = await apiClient.get(`/api/events/${eventId}`);
-    return handleApiResponse<Event>(response);
+    return apiClient.get<Event>(`/api/events/${eventId}`);
   }
 }
 

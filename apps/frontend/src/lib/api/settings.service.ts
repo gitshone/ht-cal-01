@@ -1,4 +1,4 @@
-import { apiClient, handleApiResponse } from './client';
+import { apiClient } from './client';
 import {
   UserSettings,
   UpdateUserSettingsDto,
@@ -10,13 +10,11 @@ import { logoService } from './logo.service';
 
 export const settingsService = {
   async getUserSettings(): Promise<UserSettings> {
-    const response = await apiClient.get('/api/settings');
-    return handleApiResponse(response);
+    return apiClient.get<UserSettings>('/api/settings');
   },
 
   async updateUserSettings(data: UpdateUserSettingsDto): Promise<UserSettings> {
-    const response = await apiClient.put('/api/settings', data);
-    return handleApiResponse(response);
+    return apiClient.put<UserSettings>('/api/settings', data);
   },
 
   async deleteUserSettings(): Promise<void> {
@@ -25,29 +23,28 @@ export const settingsService = {
 
   // Unavailability Blocks
   async getUnavailabilityBlocks(): Promise<UnavailabilityBlock[]> {
-    const response = await apiClient.get('/api/settings/unavailability-blocks');
-    return handleApiResponse(response);
+    return apiClient.get<UnavailabilityBlock[]>(
+      '/api/settings/unavailability-blocks'
+    );
   },
 
   async createUnavailabilityBlock(
     data: CreateUnavailabilityBlockDto
   ): Promise<UnavailabilityBlock> {
-    const response = await apiClient.post(
+    return apiClient.post<UnavailabilityBlock>(
       '/api/settings/unavailability-blocks',
       data
     );
-    return handleApiResponse(response);
   },
 
   async updateUnavailabilityBlock(
     id: string,
     data: UpdateUnavailabilityBlockDto
   ): Promise<UnavailabilityBlock> {
-    const response = await apiClient.put(
+    return apiClient.put<UnavailabilityBlock>(
       `/api/settings/unavailability-blocks/${id}`,
       data
     );
-    return handleApiResponse(response);
   },
 
   async deleteUnavailabilityBlock(id: string): Promise<void> {

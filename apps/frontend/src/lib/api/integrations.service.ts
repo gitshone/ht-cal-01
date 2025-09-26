@@ -1,53 +1,37 @@
-import { AxiosResponse } from 'axios';
-import {
-  ProviderType,
-  UserIntegration,
-  ApiResponse,
-} from '@ht-cal-01/shared-types';
-import { apiClient, handleApiResponse } from './client';
+import { ProviderType, UserIntegration } from '@ht-cal-01/shared-types';
+import { apiClient } from './client';
 
 export class IntegrationsService {
   async getConnectedProviders(): Promise<UserIntegration[]> {
-    const response: AxiosResponse<ApiResponse<UserIntegration[]>> =
-      await apiClient.get('/api/integrations/providers');
-    return handleApiResponse(response);
+    return apiClient.get<UserIntegration[]>('/api/integrations/providers');
   }
 
   async getProviderConfigs(): Promise<any[]> {
-    const response: AxiosResponse<ApiResponse<any[]>> = await apiClient.get(
-      '/api/integrations/providers/configs'
-    );
-    return handleApiResponse(response);
+    return apiClient.get<any[]>('/api/integrations/providers/configs');
   }
 
   async connectProvider(
     providerType: ProviderType,
     authData: any
   ): Promise<{ jobId: string }> {
-    const response: AxiosResponse<ApiResponse<{ jobId: string }>> =
-      await apiClient.post(
-        `/api/integrations/providers/${providerType}/connect`,
-        authData
-      );
-    return handleApiResponse(response);
+    return apiClient.post<{ jobId: string }>(
+      `/api/integrations/providers/${providerType}/connect`,
+      authData
+    );
   }
 
   async disconnectProvider(providerType: ProviderType): Promise<void> {
-    const response: AxiosResponse<ApiResponse> = await apiClient.delete(
+    await apiClient.delete(
       `/api/integrations/providers/${providerType}/disconnect`
     );
-
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Failed to disconnect provider');
-    }
   }
 
   async getProviderStatus(
     providerType: ProviderType
   ): Promise<{ connected: boolean }> {
-    const response: AxiosResponse<ApiResponse<{ connected: boolean }>> =
-      await apiClient.get(`/api/integrations/providers/${providerType}/status`);
-    return handleApiResponse(response);
+    return apiClient.get<{ connected: boolean }>(
+      `/api/integrations/providers/${providerType}/status`
+    );
   }
 
   async getAvailability(request: {
@@ -55,20 +39,17 @@ export class IntegrationsService {
     duration: number;
     providerTypes?: ProviderType[];
   }): Promise<any> {
-    const response: AxiosResponse<ApiResponse<any>> = await apiClient.post(
-      '/api/integrations/availability',
-      request
-    );
-    return handleApiResponse(response);
+    return apiClient.post<any>('/api/integrations/availability', request);
   }
 
   async startSync(dateRange?: { start: string; end: string }): Promise<{
     jobId: string;
     status: string;
   }> {
-    const response: AxiosResponse<ApiResponse<{ jobId: string }>> =
-      await apiClient.post('/api/integrations/sync', { dateRange });
-    const result = handleApiResponse(response);
+    const result = await apiClient.post<{ jobId: string }>(
+      '/api/integrations/sync',
+      { dateRange }
+    );
     return {
       jobId: result.jobId,
       status: 'pending',

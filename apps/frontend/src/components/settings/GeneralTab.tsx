@@ -269,7 +269,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ user, onUpdateHandle }) => {
             </label>
             <div className="flex items-center space-x-3">
               <div className="flex items-center px-3 py-3 bg-gray-50 border border-gray-300 rounded-l-lg text-sm text-gray-600 font-medium">
-                calendly.com/
+                {import.meta.env.VITE_APP_PUBLIC_EVENTS_URL || '-'}/
               </div>
               <div className="flex-1 relative">
                 <input

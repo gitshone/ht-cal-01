@@ -18,13 +18,10 @@ export const logoService = {
     const formData = new FormData();
     formData.append('logo', file);
 
-    const response = await apiClient.post('/api/settings/logo', formData);
-
-    return response.data;
+    return apiClient.post<LogoUploadResponse>('/api/settings/logo', formData);
   },
 
   async deleteLogo(): Promise<LogoDeleteResponse> {
-    const response = await apiClient.delete('/api/settings/logo');
-    return response.data;
+    return apiClient.delete<LogoDeleteResponse>('/api/settings/logo');
   },
 };

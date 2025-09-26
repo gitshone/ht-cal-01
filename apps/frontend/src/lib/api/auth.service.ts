@@ -1,35 +1,31 @@
-import { AxiosResponse } from 'axios';
 import {
   AuthResponseDto,
-  ApiResponse,
   User,
   UpdateUserHandleDto,
 } from '@ht-cal-01/shared-types';
-import { apiClient, handleApiResponse, getTokens } from './client';
+import { apiClient, getTokens } from './client';
 
 export class AuthService {
   async loginWithFirebase(firebaseToken: string): Promise<AuthResponseDto> {
-    const response: AxiosResponse<ApiResponse<AuthResponseDto>> =
-      await apiClient.post('/api/auth/firebase-login', {
-        idToken: firebaseToken, // Changed from firebaseToken to idToken to match new API
-      });
-
-    return handleApiResponse(response);
+    return apiClient.post<AuthResponseDto>('/api/auth/firebase-login', {
+      idToken: firebaseToken,
+    });
   }
 
-  async refreshToken(): Promise<{ accessToken: string }> {
-    const response: AxiosResponse<ApiResponse<{ accessToken: string }>> =
-      await apiClient.post('/api/auth/refresh');
+  async refreshToken(): Promise<{ accessToken: string; refreshToken: string }> {
+    const { refreshToken } = getTokens();
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
 
-    return handleApiResponse(response);
+    return apiClient.post<{
+      accessToken: string;
+      refreshToken: string;
+    }>('/api/auth/refresh', { refreshToken });
   }
 
   async getCurrentUser(): Promise<User> {
-    const response: AxiosResponse<ApiResponse<User>> = await apiClient.get(
-      '/api/auth/me'
-    );
-
-    return handleApiResponse(response);
+    return apiClient.get<User>('/api/auth/me');
   }
 
   async logout(): Promise<void> {
@@ -38,12 +34,7 @@ export class AuthService {
   }
 
   async updateHandle(data: UpdateUserHandleDto): Promise<User> {
-    const response: AxiosResponse<ApiResponse<User>> = await apiClient.put(
-      '/api/auth/handle',
-      data
-    );
-
-    return handleApiResponse(response);
+    return apiClient.put<User>('/api/auth/handle', data);
   }
 }
 
